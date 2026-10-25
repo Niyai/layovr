@@ -1,0 +1,29 @@
+{
+  "name": "@layovr/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/db/cli.ts migrate",
+    "db:seed": "tsx --env-file-if-exists=../../.env src/db/cli.ts seed",
+    "db:reset": "tsx --env-file-if-exists=../../.env src/db/cli.ts reset",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "@hono/node-server": "^1.14.0",
+    "@layovr/shared": "*",
+    "hono": "^4.7.0",
+    "pg": "^8.13.0",
+    "tsx": "^4.19.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
+  }
+}

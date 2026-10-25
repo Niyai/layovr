@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.output/
+.vinxi/
+.nitro/
+.tanstack/
+.wrangler/
+*.log
+.DS_Store
+
+# local database (PGlite) and secrets
+apps/api/.data/
+.env
+.env.*
+!.env.example
+
+# original Lovable export, kept locally only
+layovr-frontend.zip

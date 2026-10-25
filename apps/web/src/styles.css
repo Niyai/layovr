@@ -1,0 +1,176 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Layovr design tokens, carried over from the live Lovable site
+ * (layovrr.lovable.app): cream paper, ink outlines, chunky pop shadows,
+ * and five bright fills (sun, coral, lilac, mint, blush).
+ */
+
+:root {
+  --radius: 1.25rem;
+
+  --cream: oklch(97.5% 0.015 85);
+  --ink: oklch(20% 0.03 280);
+  --ink-foreground: oklch(97.5% 0.015 85);
+  --sun: oklch(86% 0.16 88);
+  --coral: oklch(70% 0.17 38);
+  --lilac: oklch(80% 0.08 300);
+  --mint: oklch(86% 0.09 160);
+  --blush: oklch(85% 0.08 10);
+
+  --background: var(--cream);
+  --foreground: var(--ink);
+  --card: oklch(100% 0 0);
+  --card-foreground: var(--ink);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: var(--ink);
+  --primary: var(--coral);
+  --primary-foreground: var(--ink);
+  --secondary: var(--sun);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(94% 0.02 85);
+  --muted-foreground: oklch(45% 0.03 280);
+  --accent: var(--lilac);
+  --accent-foreground: var(--ink);
+  --destructive: oklch(58% 0.22 27);
+  --destructive-foreground: oklch(98% 0 0);
+  --border: oklch(20% 0.03 280);
+  --input: oklch(20% 0.03 280);
+  --ring: var(--coral);
+
+  --shadow-pop: 4px 4px 0 0 var(--ink);
+  --shadow-pop-lg: 7px 7px 0 0 var(--ink);
+}
+
+@theme inline {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-sun: var(--sun);
+  --color-coral: var(--coral);
+  --color-lilac: var(--lilac);
+  --color-mint: var(--mint);
+  --color-blush: var(--blush);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--coral);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    box-shadow: var(--shadow-pop);
+    font-weight: 700;
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+  .btn:hover {
+    box-shadow: var(--shadow-pop-lg);
+    transform: translate(-2px, -2px);
+  }
+  .btn:active {
+    box-shadow: 0 0 0 0 var(--ink);
+    transform: translate(2px, 2px);
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .btn-sm {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.875rem;
+  }
+
+  .card-pop {
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-pop);
+  }
+
+  .field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--ink);
+    border-radius: 0.9rem;
+    background: oklch(1 0 0);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 0.125rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--card);
+  }
+}
+
+@utility shadow-pop {
+  box-shadow: var(--shadow-pop);
+}
+@utility shadow-pop-lg {
+  box-shadow: var(--shadow-pop-lg);
+}
+@utility font-display {
+  font-family: var(--font-display);
+}

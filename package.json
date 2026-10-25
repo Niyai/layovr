@@ -1,0 +1,27 @@
+{
+  "name": "layovr",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c magenta,cyan \"npm:dev -w @layovr/api\" \"npm:dev -w @layovr/web\"",
+    "dev:api": "npm run dev -w @layovr/api",
+    "dev:web": "npm run dev -w @layovr/web",
+    "build": "npm run build -w @layovr/web",
+    "start": "concurrently -k -n api,web -c magenta,cyan \"npm:start -w @layovr/api\" \"npm:start -w @layovr/web\"",
+    "db:migrate": "npm run db:migrate -w @layovr/api",
+    "db:seed": "npm run db:seed -w @layovr/api",
+    "db:reset": "npm run db:reset -w @layovr/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
