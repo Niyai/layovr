@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PageRouteImport } from './routes/$page'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as DevelopersRouteImport } from './routes/developers'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as OpsRouteImport } from './routes/ops'
@@ -22,11 +23,21 @@ import { Route as StaffRouteImport } from './routes/staff'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AdminCaptureRouteImport } from './routes/admin_.capture'
 import { Route as AdminPrintRouteImport } from './routes/admin_.print'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardKeysRouteImport } from './routes/dashboard.keys'
+import { Route as DashboardLoginRouteImport } from './routes/dashboard.login'
+import { Route as DashboardOperatorRouteImport } from './routes/dashboard.operator'
+import { Route as DashboardSignupRouteImport } from './routes/dashboard.signup'
 import { Route as LCodeRouteImport } from './routes/l.$code'
 import { Route as OOrderIdRouteImport } from './routes/o.$orderId'
 import { Route as PayOrderIdRouteImport } from './routes/pay.$orderId'
 import { Route as SSpotRouteImport } from './routes/s.$spot'
 import { Route as VendorVendorIdRouteImport } from './routes/vendor.$vendorId'
+import { Route as DashboardEventsEventIdRouteImport } from './routes/dashboard.events.$eventId'
+import { Route as DashboardEventsNewRouteImport } from './routes/dashboard.events.new'
+import { Route as EEventSpotRouteImport } from './routes/e.$event.$spot'
+import { Route as JoinVendorTokenRouteImport } from './routes/join.vendor.$token'
+import { Route as DashboardEventsEventIdPrintRouteImport } from './routes/dashboard.events.$eventId_.print'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +57,11 @@ const AdminRoute = AdminRouteImport.update({
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRoute = DevelopersRouteImport.update({
+  id: '/developers',
+  path: '/developers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -93,6 +109,31 @@ const AdminPrintRoute = AdminPrintRouteImport.update({
   path: '/admin/print',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardKeysRoute = DashboardKeysRouteImport.update({
+  id: '/dashboard/keys',
+  path: '/dashboard/keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardLoginRoute = DashboardLoginRouteImport.update({
+  id: '/dashboard/login',
+  path: '/dashboard/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardOperatorRoute = DashboardOperatorRouteImport.update({
+  id: '/dashboard/operator',
+  path: '/dashboard/operator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardSignupRoute = DashboardSignupRouteImport.update({
+  id: '/dashboard/signup',
+  path: '/dashboard/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LCodeRoute = LCodeRouteImport.update({
   id: '/l/$code',
   path: '/l/$code',
@@ -118,12 +159,39 @@ const VendorVendorIdRoute = VendorVendorIdRouteImport.update({
   path: '/vendor/$vendorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardEventsEventIdRoute = DashboardEventsEventIdRouteImport.update({
+  id: '/dashboard/events/$eventId',
+  path: '/dashboard/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardEventsNewRoute = DashboardEventsNewRouteImport.update({
+  id: '/dashboard/events/new',
+  path: '/dashboard/events/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EEventSpotRoute = EEventSpotRouteImport.update({
+  id: '/e/$event/$spot',
+  path: '/e/$event/$spot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinVendorTokenRoute = JoinVendorTokenRouteImport.update({
+  id: '/join/vendor/$token',
+  path: '/join/vendor/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardEventsEventIdPrintRoute =
+  DashboardEventsEventIdPrintRouteImport.update({
+    id: '/dashboard/events/$eventId_/print',
+    path: '/dashboard/events/$eventId/print',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$page': typeof PageRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/developers': typeof DevelopersRoute
   '/explore': typeof ExploreRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ops': typeof OpsRoute
@@ -133,17 +201,28 @@ export interface FileRoutesByFullPath {
   '/track': typeof TrackRoute
   '/admin/capture': typeof AdminCaptureRoute
   '/admin/print': typeof AdminPrintRoute
+  '/dashboard/keys': typeof DashboardKeysRoute
+  '/dashboard/login': typeof DashboardLoginRoute
+  '/dashboard/operator': typeof DashboardOperatorRoute
+  '/dashboard/signup': typeof DashboardSignupRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
   '/s/$spot': typeof SSpotRoute
   '/vendor/$vendorId': typeof VendorVendorIdRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/events/$eventId': typeof DashboardEventsEventIdRoute
+  '/dashboard/events/new': typeof DashboardEventsNewRoute
+  '/e/$event/$spot': typeof EEventSpotRoute
+  '/join/vendor/$token': typeof JoinVendorTokenRoute
+  '/dashboard/events/$eventId/print': typeof DashboardEventsEventIdPrintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$page': typeof PageRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/developers': typeof DevelopersRoute
   '/explore': typeof ExploreRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ops': typeof OpsRoute
@@ -153,11 +232,21 @@ export interface FileRoutesByTo {
   '/track': typeof TrackRoute
   '/admin/capture': typeof AdminCaptureRoute
   '/admin/print': typeof AdminPrintRoute
+  '/dashboard/keys': typeof DashboardKeysRoute
+  '/dashboard/login': typeof DashboardLoginRoute
+  '/dashboard/operator': typeof DashboardOperatorRoute
+  '/dashboard/signup': typeof DashboardSignupRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
   '/s/$spot': typeof SSpotRoute
   '/vendor/$vendorId': typeof VendorVendorIdRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/events/$eventId': typeof DashboardEventsEventIdRoute
+  '/dashboard/events/new': typeof DashboardEventsNewRoute
+  '/e/$event/$spot': typeof EEventSpotRoute
+  '/join/vendor/$token': typeof JoinVendorTokenRoute
+  '/dashboard/events/$eventId/print': typeof DashboardEventsEventIdPrintRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -165,6 +254,7 @@ export interface FileRoutesById {
   '/$page': typeof PageRoute
   '/admin': typeof AdminRoute
   '/checkout': typeof CheckoutRoute
+  '/developers': typeof DevelopersRoute
   '/explore': typeof ExploreRoute
   '/how-it-works': typeof HowItWorksRoute
   '/ops': typeof OpsRoute
@@ -174,11 +264,21 @@ export interface FileRoutesById {
   '/track': typeof TrackRoute
   '/admin_/capture': typeof AdminCaptureRoute
   '/admin_/print': typeof AdminPrintRoute
+  '/dashboard/keys': typeof DashboardKeysRoute
+  '/dashboard/login': typeof DashboardLoginRoute
+  '/dashboard/operator': typeof DashboardOperatorRoute
+  '/dashboard/signup': typeof DashboardSignupRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
   '/s/$spot': typeof SSpotRoute
   '/vendor/$vendorId': typeof VendorVendorIdRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/events/$eventId': typeof DashboardEventsEventIdRoute
+  '/dashboard/events/new': typeof DashboardEventsNewRoute
+  '/e/$event/$spot': typeof EEventSpotRoute
+  '/join/vendor/$token': typeof JoinVendorTokenRoute
+  '/dashboard/events/$eventId_/print': typeof DashboardEventsEventIdPrintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,6 +287,7 @@ export interface FileRouteTypes {
     | '/$page'
     | '/admin'
     | '/checkout'
+    | '/developers'
     | '/explore'
     | '/how-it-works'
     | '/ops'
@@ -196,17 +297,28 @@ export interface FileRouteTypes {
     | '/track'
     | '/admin/capture'
     | '/admin/print'
+    | '/dashboard/keys'
+    | '/dashboard/login'
+    | '/dashboard/operator'
+    | '/dashboard/signup'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
     | '/s/$spot'
     | '/vendor/$vendorId'
+    | '/dashboard/'
+    | '/dashboard/events/$eventId'
+    | '/dashboard/events/new'
+    | '/e/$event/$spot'
+    | '/join/vendor/$token'
+    | '/dashboard/events/$eventId/print'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$page'
     | '/admin'
     | '/checkout'
+    | '/developers'
     | '/explore'
     | '/how-it-works'
     | '/ops'
@@ -216,17 +328,28 @@ export interface FileRouteTypes {
     | '/track'
     | '/admin/capture'
     | '/admin/print'
+    | '/dashboard/keys'
+    | '/dashboard/login'
+    | '/dashboard/operator'
+    | '/dashboard/signup'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
     | '/s/$spot'
     | '/vendor/$vendorId'
+    | '/dashboard'
+    | '/dashboard/events/$eventId'
+    | '/dashboard/events/new'
+    | '/e/$event/$spot'
+    | '/join/vendor/$token'
+    | '/dashboard/events/$eventId/print'
   id:
     | '__root__'
     | '/'
     | '/$page'
     | '/admin'
     | '/checkout'
+    | '/developers'
     | '/explore'
     | '/how-it-works'
     | '/ops'
@@ -236,11 +359,21 @@ export interface FileRouteTypes {
     | '/track'
     | '/admin_/capture'
     | '/admin_/print'
+    | '/dashboard/keys'
+    | '/dashboard/login'
+    | '/dashboard/operator'
+    | '/dashboard/signup'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
     | '/s/$spot'
     | '/vendor/$vendorId'
+    | '/dashboard/'
+    | '/dashboard/events/$eventId'
+    | '/dashboard/events/new'
+    | '/e/$event/$spot'
+    | '/join/vendor/$token'
+    | '/dashboard/events/$eventId_/print'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,6 +381,7 @@ export interface RootRouteChildren {
   PageRoute: typeof PageRoute
   AdminRoute: typeof AdminRoute
   CheckoutRoute: typeof CheckoutRoute
+  DevelopersRoute: typeof DevelopersRoute
   ExploreRoute: typeof ExploreRoute
   HowItWorksRoute: typeof HowItWorksRoute
   OpsRoute: typeof OpsRoute
@@ -257,11 +391,21 @@ export interface RootRouteChildren {
   TrackRoute: typeof TrackRoute
   AdminCaptureRoute: typeof AdminCaptureRoute
   AdminPrintRoute: typeof AdminPrintRoute
+  DashboardKeysRoute: typeof DashboardKeysRoute
+  DashboardLoginRoute: typeof DashboardLoginRoute
+  DashboardOperatorRoute: typeof DashboardOperatorRoute
+  DashboardSignupRoute: typeof DashboardSignupRoute
   LCodeRoute: typeof LCodeRoute
   OOrderIdRoute: typeof OOrderIdRoute
   PayOrderIdRoute: typeof PayOrderIdRoute
   SSpotRoute: typeof SSpotRoute
   VendorVendorIdRoute: typeof VendorVendorIdRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardEventsEventIdRoute: typeof DashboardEventsEventIdRoute
+  DashboardEventsNewRoute: typeof DashboardEventsNewRoute
+  EEventSpotRoute: typeof EEventSpotRoute
+  JoinVendorTokenRoute: typeof JoinVendorTokenRoute
+  DashboardEventsEventIdPrintRoute: typeof DashboardEventsEventIdPrintRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers': {
+      id: '/developers'
+      path: '/developers'
+      fullPath: '/developers'
+      preLoaderRoute: typeof DevelopersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -357,6 +508,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPrintRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/keys': {
+      id: '/dashboard/keys'
+      path: '/dashboard/keys'
+      fullPath: '/dashboard/keys'
+      preLoaderRoute: typeof DashboardKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/login': {
+      id: '/dashboard/login'
+      path: '/dashboard/login'
+      fullPath: '/dashboard/login'
+      preLoaderRoute: typeof DashboardLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/operator': {
+      id: '/dashboard/operator'
+      path: '/dashboard/operator'
+      fullPath: '/dashboard/operator'
+      preLoaderRoute: typeof DashboardOperatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/signup': {
+      id: '/dashboard/signup'
+      path: '/dashboard/signup'
+      fullPath: '/dashboard/signup'
+      preLoaderRoute: typeof DashboardSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/l/$code': {
       id: '/l/$code'
       path: '/l/$code'
@@ -392,6 +578,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorVendorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/events/$eventId': {
+      id: '/dashboard/events/$eventId'
+      path: '/dashboard/events/$eventId'
+      fullPath: '/dashboard/events/$eventId'
+      preLoaderRoute: typeof DashboardEventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/events/new': {
+      id: '/dashboard/events/new'
+      path: '/dashboard/events/new'
+      fullPath: '/dashboard/events/new'
+      preLoaderRoute: typeof DashboardEventsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/e/$event/$spot': {
+      id: '/e/$event/$spot'
+      path: '/e/$event/$spot'
+      fullPath: '/e/$event/$spot'
+      preLoaderRoute: typeof EEventSpotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/vendor/$token': {
+      id: '/join/vendor/$token'
+      path: '/join/vendor/$token'
+      fullPath: '/join/vendor/$token'
+      preLoaderRoute: typeof JoinVendorTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/events/$eventId_/print': {
+      id: '/dashboard/events/$eventId_/print'
+      path: '/dashboard/events/$eventId/print'
+      fullPath: '/dashboard/events/$eventId/print'
+      preLoaderRoute: typeof DashboardEventsEventIdPrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -400,6 +621,7 @@ const rootRouteChildren: RootRouteChildren = {
   PageRoute: PageRoute,
   AdminRoute: AdminRoute,
   CheckoutRoute: CheckoutRoute,
+  DevelopersRoute: DevelopersRoute,
   ExploreRoute: ExploreRoute,
   HowItWorksRoute: HowItWorksRoute,
   OpsRoute: OpsRoute,
@@ -409,11 +631,21 @@ const rootRouteChildren: RootRouteChildren = {
   TrackRoute: TrackRoute,
   AdminCaptureRoute: AdminCaptureRoute,
   AdminPrintRoute: AdminPrintRoute,
+  DashboardKeysRoute: DashboardKeysRoute,
+  DashboardLoginRoute: DashboardLoginRoute,
+  DashboardOperatorRoute: DashboardOperatorRoute,
+  DashboardSignupRoute: DashboardSignupRoute,
   LCodeRoute: LCodeRoute,
   OOrderIdRoute: OOrderIdRoute,
   PayOrderIdRoute: PayOrderIdRoute,
   SSpotRoute: SSpotRoute,
   VendorVendorIdRoute: VendorVendorIdRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+  DashboardEventsEventIdRoute: DashboardEventsEventIdRoute,
+  DashboardEventsNewRoute: DashboardEventsNewRoute,
+  EEventSpotRoute: EEventSpotRoute,
+  JoinVendorTokenRoute: JoinVendorTokenRoute,
+  DashboardEventsEventIdPrintRoute: DashboardEventsEventIdPrintRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -23,6 +23,10 @@ export type Env = {
   showDemoPins: boolean;
   allowReset: boolean;
   seedOnEmpty: boolean;
+  /** Sent to OpenStreetMap Nominatim, which requires an identifying User-Agent. */
+  geoUserAgent: string;
+  /** Dev-only partner demo logins shown on the dashboard sign-in page. */
+  showDemoLogins: boolean;
 };
 
 export function loadEnv(): Env {
@@ -44,5 +48,7 @@ export function loadEnv(): Env {
     showDemoPins: flag("SHOW_DEMO_PINS", !production),
     allowReset: flag("ALLOW_DEMO_RESET", !production),
     seedOnEmpty: flag("SEED_ON_EMPTY", true),
+    geoUserAgent: get("GEO_USER_AGENT") ?? "Layovr/0.1 (https://layovr.app; ops@layovr.app)",
+    showDemoLogins: flag("SHOW_DEMO_PINS", !production),
   };
 }

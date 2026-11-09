@@ -1,9 +1,10 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 
-export function spotUrl(code: string): string {
+/** What a printed QR card opens: the spot inside its event (spot codes repeat across events). */
+export function spotUrl(eventCode: string, spotCode: string): string {
   const base = typeof window === "undefined" ? "" : window.location.origin;
-  return `${base}/s/${code}`;
+  return `${base}/e/${eventCode}/${spotCode}`;
 }
 
 export function QrImage({
@@ -43,8 +44,8 @@ export function QrImage({
   );
 }
 
-export async function downloadQr(code: string, label: string) {
-  const url = await QRCode.toDataURL(spotUrl(code), {
+export async function downloadQr(eventCode: string, code: string, label: string) {
+  const url = await QRCode.toDataURL(spotUrl(eventCode, code), {
     margin: 2,
     width: 1024,
     errorCorrectionLevel: "M",

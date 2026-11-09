@@ -137,6 +137,48 @@ function Home() {
             The whole journey →
           </Link>
         </div>
+
+        <section className="mt-20" aria-labelledby="build">
+          <span className="chip bg-lilac">For event planners and platforms</span>
+          <h2 id="build" className="mt-3 text-3xl font-extrabold md:text-4xl">
+            Build on Layovr
+          </h2>
+          <p className="mt-2 max-w-2xl text-lg">
+            Run seat delivery at your event from our dashboard, or plug it into the event app, ticketing platform or AI assistant you already use.
+          </p>
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <Link to="/dashboard/signup" className="card-pop flex flex-col gap-2 bg-sun p-6 transition hover:-translate-y-1">
+              <div className="text-4xl">🎪</div>
+              <h3 className="text-2xl font-extrabold">Run it at your event</h3>
+              <p>
+                Pick your venue (Landmark, Eko Convention Centre, National Theatre…) or draw your own map, invite vendors, add runners or let us
+                bring ours.
+              </p>
+              <span className="btn btn-sm mt-auto w-fit bg-card">Create a partner account →</span>
+            </Link>
+            <a href="/developers#reference" className="card-pop flex flex-col gap-2 bg-card p-6 transition hover:-translate-y-1">
+              <div className="text-4xl">📘</div>
+              <h3 className="text-2xl font-extrabold">API documentation</h3>
+              <p>Events, venue plans, vendors, staff and orders over REST, with an interactive reference and an OpenAPI file.</p>
+              <pre className="mt-1 overflow-x-auto rounded-xl border-2 border-ink bg-ink p-3 text-[11px] text-ink-foreground">
+                <code>{`POST /api/partner/events
+Authorization: Bearer lvk_…
+{ "name": "Lagos Tech Fest",
+  "templateCode": "LANDMARK-CENTRE" }`}</code>
+              </pre>
+              <span className="btn btn-sm mt-auto w-fit bg-sun">Read the docs →</span>
+            </a>
+            <a href="/developers#mcp" className="card-pop flex flex-col gap-2 bg-mint p-6 transition hover:-translate-y-1">
+              <div className="text-4xl">🤖</div>
+              <h3 className="text-2xl font-extrabold">Connect via MCP</h3>
+              <p>
+                Give Claude, Cursor, VS Code or your platform's agent Layovr tools. “Add Mama Put with jollof at ₦4,500 and block the side
+                entrance.” Changes are previewed before they apply.
+              </p>
+              <span className="btn btn-sm mt-auto w-fit bg-card">Set up MCP →</span>
+            </a>
+          </div>
+        </section>
       </Section>
     </>
   );

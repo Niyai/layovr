@@ -22,9 +22,11 @@ npm install
 npm run dev          # API on :8787, web on http://localhost:8080
 ```
 
-The first start creates the schema and loads demo data. Open `/s/MB-C` (a
+The first start creates the schema and loads demo data. Open `/s/B0-EXH1-1` (a
 spot's QR link) on a phone-sized window and `/staff` in another browser
 profile. Phones on the same Wi-Fi can use the "Network" URL Vite prints.
+
+Staff sign in at `/staff` with the event code **MOONSHOT** and a PIN:
 
 | PIN  | Who   | Role              | Lands on        |
 | ---- | ----- | ----------------- | --------------- |
@@ -34,6 +36,10 @@ profile. Phones on the same Wi-Fi can use the "Network" URL Vite prints.
 | 4444 | Bayo  | runner            | /runner         |
 | 5555 | Chidi | runner (🔑 access) | /runner         |
 | 6666 | Ife   | capture           | /admin/capture  |
+
+Partner dashboard (`/dashboard/login`, local demo accounts, password `layovr-demo`):
+`planner@demo.layovr.app` (owns MOONSHOT) and `ops@demo.layovr.app` (Layovr operator).
+Developers: `/developers` (API reference, MCP set-up), `/api/openapi.json`, `/api/docs`, MCP at `/api/mcp`.
 
 Useful commands:
 
@@ -67,7 +73,25 @@ Without `FLW_SECRET_KEY`, checkout runs in demo mode (no money moves).
 - Photos (menus, receipts, floor plans) are compressed in the browser and
   stored in the `uploads` table, served from `/api/uploads/:id`.
 
-Schema: `apps/api/src/db/migrations/001_init.sql`.
+- Partners (event planners, venues, platforms) sign up, create events, edit
+  the venue plan visually, invite vendors, add staff and publish:
+  [docs/PARTNERS.md](docs/PARTNERS.md). Venue library research:
+  [docs/LAGOS-VENUES.md](docs/LAGOS-VENUES.md).
+- The same is available headless: partner API keys, an OpenAPI 3.1 document
+  generated from the route registry (`apps/api/src/http.ts`, `openapi.ts`),
+  and an MCP server (`apps/api/src/mcp/`) whose tools wrap the same services.
+- Venues are mapped with the `layovr-plan/1` standard (levels, sections,
+  areas, QR spots, entrances): see [docs/PLAN-STANDARD.md](docs/PLAN-STANDARD.md)
+  and [docs/templates/](docs/templates/). The Moonshot / National Theatre plan
+  is `packages/shared/src/plans/moonshot.ts`.
+- Buyers can say where they are without scanning (tap the map or "Use my
+  location"), and runners share their location while on an order. Services
+  shortlist: [docs/THIRD-PARTY-SERVICES.md](docs/THIRD-PARTY-SERVICES.md).
+- "Raise your phone": when the runner taps "I'm in the area", buyer and runner
+  phones show the same colour, unique within that area.
+
+Schema: `apps/api/src/db/migrations/`. What's next (headless API, MCP,
+hardware): [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Not built yet
 

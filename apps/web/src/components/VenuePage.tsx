@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { SpotPicker } from "@/components/SpotPicker";
+import { LocateMe } from "@/components/LocateMe";
 import { EmptyCard, Note, PageHero, Section } from "@/components/ui-bits";
 import {
   runnersFree,
@@ -66,6 +66,15 @@ export function VenuePage({ code }: { code: string }) {
                     Delivering to
                   </div>
                   <div className="text-lg font-extrabold">📍 {spot.label}</div>
+                  {session.pinpoint && session.pinpoint.method !== "qr" && (
+                    <div className="text-xs">
+                      {session.pinpoint.method === "map"
+                        ? "From where you tapped on the map"
+                        : session.pinpoint.method === "gps"
+                          ? `From your location (±${session.pinpoint.accuracyM} m)`
+                          : "Chosen from the list"}
+                    </div>
+                  )}
                   {zone?.restricted && (
                     <div className="text-sm">
                       Restricted area: a runner with access will bring it.
@@ -81,24 +90,23 @@ export function VenuePage({ code }: { code: string }) {
                 </button>
               </div>
             ) : (
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-bold">
-                  Where are you sitting?
+              <div>
+                <span className="mb-2 block text-sm font-bold">
+                  Where are you? No code needed.
                 </span>
-                <SpotPicker
+                <LocateMe
                   d={d}
-                  venueId={venue.id}
+                  venue={venue}
                   value={spot?.id}
-                  onChange={(id) => {
-                    setSpot(id);
+                  onPick={(id, pinpoint) => {
+                    setSpot(id, pinpoint);
                     setPicking(false);
                   }}
                 />
-                <span className="mt-1 block text-xs">
-                  Tip: scanning the code on your seat or table fills this in for
-                  you.
+                <span className="mt-2 block text-xs">
+                  Or scan the code on your seat or table to fill this in.
                 </span>
-              </label>
+              </div>
             )}
           </div>
         )}

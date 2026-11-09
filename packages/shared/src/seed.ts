@@ -1,12 +1,14 @@
-import type { Fill, Product, Spot, Staff, Vendor, Venue, Zone } from "./types";
+import type { VenuePlanInput } from "./plan";
+import { moonshotPlan } from "./plans/moonshot";
+import type { Fill, Product, Staff, Vendor, Venue } from "./types";
 
 /** Seed staff carry a plain PIN; the API hashes it on insert and never sends it out. */
 export type SeedStaff = Staff & { pin: string };
 
 export type Seed = {
   venues: Venue[];
-  zones: Zone[];
-  spots: Spot[];
+  /** Areas and spots come from each venue's layovr-plan file. */
+  plans: { venueId: string; plan: VenuePlanInput }[];
   vendors: Vendor[];
   products: Product[];
   staff: SeedStaff[];
@@ -89,172 +91,6 @@ const venues: Venue[] = [
   },
 ];
 
-/**
- * National Theatre zones. Known so far: main entrance, Main Bowl, Theatres 1–3.
- * The rectangles are a schematic placeholder until the site walk; upload the
- * real plan in Admin → Floor plan and drag spots onto it.
- */
-const zones: Zone[] = [
-  {
-    id: "z_entrance",
-    venueId: "v_moonshot",
-    name: "Main entrance",
-    restricted: false,
-    rect: { x: 34, y: 80, w: 32, h: 15 },
-  },
-  {
-    id: "z_bowl",
-    venueId: "v_moonshot",
-    name: "Main Bowl",
-    restricted: false,
-    rect: { x: 30, y: 26, w: 40, h: 46 },
-  },
-  {
-    id: "z_t1",
-    venueId: "v_moonshot",
-    name: "Theatre 1",
-    restricted: false,
-    rect: { x: 4, y: 8, w: 22, h: 30 },
-  },
-  {
-    id: "z_t2",
-    venueId: "v_moonshot",
-    name: "Theatre 2",
-    restricted: false,
-    rect: { x: 74, y: 8, w: 22, h: 30 },
-  },
-  {
-    id: "z_t3",
-    venueId: "v_moonshot",
-    name: "Theatre 3",
-    restricted: false,
-    rect: { x: 4, y: 48, w: 22, h: 30 },
-  },
-];
-
-const spot = (
-  code: string,
-  zoneId: string,
-  label: string,
-  x: number,
-  y: number,
-  directions: string,
-  landmark?: string,
-): Spot => ({
-  id: `s_${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-  venueId: "v_moonshot",
-  zoneId,
-  code,
-  label,
-  x,
-  y,
-  directions,
-  ...(landmark ? { landmark } : {}),
-  active: true,
-});
-
-const spots: Spot[] = [
-  spot(
-    "ENT-L",
-    "z_entrance",
-    "Main entrance, left of the doors",
-    40,
-    88,
-    "Ops desk → out to the forecourt → left side of the main doors.",
-  ),
-  spot(
-    "ENT-R",
-    "z_entrance",
-    "Main entrance, right of the doors",
-    60,
-    88,
-    "Ops desk → out to the forecourt → right side of the main doors.",
-  ),
-  spot(
-    "MB-L",
-    "z_bowl",
-    "Main Bowl, left block",
-    37,
-    48,
-    "Enter Main Bowl by the left door → down the left aisle.",
-    "Aisle seats, left block",
-  ),
-  spot(
-    "MB-C",
-    "z_bowl",
-    "Main Bowl, centre block",
-    50,
-    44,
-    "Enter Main Bowl by the centre doors → straight down the centre aisle.",
-    "Centre aisle, front half",
-  ),
-  spot(
-    "MB-R",
-    "z_bowl",
-    "Main Bowl, right block",
-    63,
-    48,
-    "Enter Main Bowl by the right door → down the right aisle.",
-    "Aisle seats, right block",
-  ),
-  spot(
-    "MB-B",
-    "z_bowl",
-    "Main Bowl, back rows",
-    50,
-    64,
-    "Enter Main Bowl by the centre doors → stay on the back walkway.",
-  ),
-  spot(
-    "T1-F",
-    "z_t1",
-    "Theatre 1, front half",
-    15,
-    18,
-    "Corridor to Theatre 1 → enter → front half, aisle side.",
-  ),
-  spot(
-    "T1-B",
-    "z_t1",
-    "Theatre 1, back half",
-    15,
-    30,
-    "Corridor to Theatre 1 → enter → back rows.",
-  ),
-  spot(
-    "T2-F",
-    "z_t2",
-    "Theatre 2, front half",
-    85,
-    18,
-    "Corridor to Theatre 2 → enter → front half, aisle side.",
-  ),
-  spot(
-    "T2-B",
-    "z_t2",
-    "Theatre 2, back half",
-    85,
-    30,
-    "Corridor to Theatre 2 → enter → back rows.",
-  ),
-  spot(
-    "T3-F",
-    "z_t3",
-    "Theatre 3, front half",
-    15,
-    58,
-    "Corridor to Theatre 3 → enter → front half, aisle side.",
-  ),
-  spot(
-    "T3-B",
-    "z_t3",
-    "Theatre 3, back half",
-    15,
-    70,
-    "Corridor to Theatre 3 → enter → back rows.",
-  ),
-];
-
 const vendor = (
   id: string,
   venueId: string,
@@ -289,10 +125,10 @@ const vendors: Vendor[] = [
     "🍛",
     "Rice & mains",
     "Smoky party jollof, fried rice and grilled chicken.",
-    "Forecourt, left of main entrance",
+    "Food Village, first row near Zone B",
     10,
     "coral",
-    "z_entrance",
+    "z_moonshot_food",
   ),
   vendor(
     "vd_chops",
@@ -301,10 +137,10 @@ const vendors: Vendor[] = [
     "🥟",
     "Small chops",
     "Puff-puff, samosa, spring rolls and gizzard in party packs.",
-    "Forecourt, right of main entrance",
+    "Food Village, middle row",
     6,
     "sun",
-    "z_entrance",
+    "z_moonshot_food",
   ),
   vendor(
     "vd_zobo",
@@ -313,10 +149,10 @@ const vendors: Vendor[] = [
     "🧃",
     "Drinks",
     "Chilled zobo, Chapman, water and soft drinks.",
-    "Main Bowl foyer",
+    "Zone B entrance hall (B0)",
     3,
     "mint",
-    "z_bowl",
+    "z_moonshot_blobby",
   ),
   vendor(
     "vd_grill",
@@ -325,10 +161,10 @@ const vendors: Vendor[] = [
     "🍢",
     "Suya & grills",
     "Beef suya, chicken suya and asun by the stick or wrap.",
-    "Forecourt, far left",
+    "Food Village, near Zone A",
     8,
     "blush",
-    "z_entrance",
+    "z_moonshot_food",
   ),
   vendor(
     "vd_brew",
@@ -337,10 +173,10 @@ const vendors: Vendor[] = [
     "☕",
     "Coffee",
     "Espresso, iced coffee and tea for long sessions.",
-    "Main Bowl foyer",
+    "Zone D entrance hall (D0)",
     5,
     "lilac",
-    "z_bowl",
+    "z_moonshot_dlobby",
   ),
   vendor(
     "vd_charge",
@@ -349,10 +185,10 @@ const vendors: Vendor[] = [
     "🔋",
     "Services",
     "We collect your phone, charge it and bring it back.",
-    "Main Bowl foyer",
+    "Zone B entrance hall (B0)",
     2,
     "card",
-    "z_bowl",
+    "z_moonshot_blobby",
   ),
 
   vendor(
@@ -534,8 +370,7 @@ const products: Product[] = [
 export function makeSeed(): Seed {
   return {
     venues,
-    zones,
-    spots,
+    plans: [{ venueId: "v_moonshot", plan: moonshotPlan }],
     vendors,
     products,
     staff: [

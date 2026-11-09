@@ -84,6 +84,7 @@ function PrintCards({ me }: { me: Staff }) {
             code={s.code}
             label={s.label}
             venueName={venue?.name ?? ""}
+            venueCode={venue?.code ?? ""}
           />
         ))}
         {Array.from({ length: blanks }, (_, i) => (
@@ -132,7 +133,7 @@ function Card({
         Scan to order. We bring it to this spot.
       </p>
       <div className="mt-4 rounded-2xl border-2 border-ink bg-white p-3">
-        <QrImage value={code ? spotUrl(code) : venueUrl} size={190} />
+        <QrImage value={code ? spotUrl(venueCode ?? "", code) : venueUrl} size={190} />
       </div>
       <div className="mt-3 font-mono text-2xl font-bold tracking-wider">
         {code || venueCode}

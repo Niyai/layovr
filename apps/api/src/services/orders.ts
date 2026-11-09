@@ -1,12 +1,16 @@
 import {
   feeFor,
   formatNaira,
+  matchColor,
   orderCode,
+  pickMatchSignal,
   uid,
   type CartLine,
   type ItemStatus,
   type Order,
   type OrderStatus,
+  type PlanMeta,
+  type Pinpoint,
 } from "@layovr/shared";
 import type { Queryable, Row } from "../db/client";
 import { bad, conflict, forbidden, notFound } from "../lib/errors";
@@ -14,6 +18,7 @@ import { notify } from "../lib/events";
 import type { PaymentGateway } from "../lib/flutterwave";
 import { persistImage } from "../lib/images";
 import type { Ctx, StaffRow } from "../context";
+import { clearRunnerLocation } from "./location";
 import { loadOrders, toVenue } from "./mappers";
 
 /* ------------------------------------------------------------ status rules */
@@ -55,6 +60,9 @@ async function transition(
     [order.venue_id, order.id, from, to, actor, note ?? null],
   );
   order.status = to;
+  if (order.runner_id && ["delivered", "not_delivered", "cancelled"].includes(to)) {
+    await clearRunnerLocation(q, order.runner_id);
+  }
 }
 
 /** A timeline note that doesn't change status (ETA change, item swapped…). */
@@ -96,6 +104,7 @@ export type CreateOrderInput = {
   email?: string | undefined;
   landmark?: string | undefined;
   cart: CartLine[];
+  pinpoint?: Pinpoint | undefined;
 };
 
 /**
@@ -113,6 +122,18 @@ export async function createOrder(ctx: Ctx, input: CreateOrderInput): Promise<Or
       [input.spotId, venue.id],
     );
     if (!spot) throw bad("Tell us where you are so the runner can find you.");
+    const pin = input.pinpoint;
+    if (pin && pin.x !== undefined && pin.y !== undefined) {
+      const meta = venueRow.plan as PlanMeta | null;
+      const w = meta?.canvas.width ?? 100;
+      const h = meta?.canvas.height ?? 75;
+      if (pin.x < 0 || pin.y < 0 || pin.x > w || pin.y > h) {
+        throw bad("That point is outside the venue map. Tap where you are on the map.");
+      }
+      if (pin.level !== undefined && meta && !meta.levels.some((l) => l.level === pin.level)) {
+        throw bad("That floor isn't on this venue's map.");
+      }
+    }
 
     const qtyById = new Map<string, number>();
     for (const line of input.cart) {
@@ -145,7 +166,7 @@ export async function createOrder(ctx: Ctx, input: CreateOrderInput): Promise<Or
     );
     const fee = feeFor(venue, subtotal);
     const orderId = uid("ord", 16);
-    const pin = String(1000 + (crypto.getRandomValues(new Uint16Array(1))[0]! % 9000));
+    const handoffPin = String(1000 + (crypto.getRandomValues(new Uint16Array(1))[0]! % 9000));
 
     // Retry on the rare LV- code collision.
     for (let attempt = 0; ; attempt++) {
@@ -154,11 +175,14 @@ export async function createOrder(ctx: Ctx, input: CreateOrderInput): Promise<Or
       if (taken.length && attempt < 5) continue;
       await q.query(
         `insert into orders (id, venue_id, code, spot_id, customer_name, customer_phone,
-           customer_email, landmark_note, subtotal_kobo, fee_kobo, total_kobo, status, handoff_pin)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'awaiting_payment',$12)`,
+           customer_email, landmark_note, subtotal_kobo, fee_kobo, total_kobo, status, handoff_pin,
+           locate_method, pin_x, pin_y, pin_level, pin_accuracy_m)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'awaiting_payment',$12,$13,$14,$15,$16,$17)`,
         [
           orderId, venue.id, code, spot.id, input.name, input.phone,
-          input.email ?? null, input.landmark ?? null, subtotal, fee, subtotal + fee, pin,
+          input.email ?? null, input.landmark ?? null, subtotal, fee, subtotal + fee, handoffPin,
+          pin?.method ?? null, pin?.x ?? null, pin?.y ?? null, pin?.level ?? null,
+          pin?.accuracyM === undefined ? null : Math.round(pin.accuracyM),
         ],
       );
       break;
@@ -466,6 +490,40 @@ export async function goOnTheWay(ctx: Ctx, staff: StaffRow, orderId: string) {
       return;
     }
     await transition(q, order, "on_the_way", staff.name);
+  });
+}
+
+/**
+ * "I'm in the area": gives this buyer/runner pair a colour signal nobody else
+ * in the same area is showing, so both can raise their phones and spot each other.
+ * Calling it again returns the same signal.
+ */
+export async function arriveNearBuyer(ctx: Ctx, staff: StaffRow, orderId: string) {
+  await act(ctx, staff, orderId, async (q, order) => {
+    if (order.status !== "on_the_way") throw conflict("Head to the buyer first");
+    if (order.match_color) return;
+    const [spot] = await q.query("select zone_id from spots where id = $1", [order.spot_id]);
+    // Lock the area so two runners arriving together can't get the same colour.
+    await q.query("select id from zones where id = $1 for update", [spot?.zone_id]);
+    const taken = await q.query(
+      `select o.match_color as color, o.match_pattern as pattern
+       from orders o join spots s on s.id = o.spot_id
+       where s.zone_id = $1 and o.status = 'on_the_way' and o.match_color is not null`,
+      [spot?.zone_id],
+    );
+    const signal = pickMatchSignal(taken as { color: string; pattern: string }[]);
+    await q.query(
+      `update orders set arrived_at = now(), match_color = $2, match_pattern = $3, updated_at = now()
+       where id = $1`,
+      [order.id, signal.color, signal.pattern],
+    );
+    const c = matchColor(signal.color);
+    await logNote(
+      q,
+      order,
+      staff.name,
+      `In your area: raise your phone · ${c.name} ${c.symbol}${signal.pattern === "solid" ? "" : ` (${signal.pattern})`}`,
+    );
   });
 }
 

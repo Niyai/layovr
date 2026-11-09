@@ -1,0 +1,67 @@
+{
+  "standard": "layovr-plan/1",
+  "venue": {
+    "code": "MY-VENUE",
+    "name": "My venue",
+    "city": "Lagos",
+    "type": "Event"
+  },
+  "canvas": {
+    "width": 100,
+    "height": 75,
+    "unit": "units",
+    "north": 0,
+    "notes": "Replace with metres if you have a scaled drawing."
+  },
+  "levels": [
+    {
+      "level": 0,
+      "name": "Ground floor"
+    }
+  ],
+  "sections": [
+    {
+      "code": "A",
+      "name": "Zone A",
+      "color": "#E8553B"
+    }
+  ],
+  "areas": [
+    {
+      "code": "HALL1",
+      "name": "Hall 1",
+      "section": "A",
+      "level": 0,
+      "kind": "hall",
+      "access": "open",
+      "shape": {
+        "type": "rect",
+        "x": 10,
+        "y": 10,
+        "w": 40,
+        "h": 30
+      },
+      "capacity": 300
+    }
+  ],
+  "spots": [
+    {
+      "code": "A0-HALL1-1",
+      "area": "HALL1",
+      "label": "Hall 1 · front rows",
+      "x": 30,
+      "y": 18,
+      "directions": "Main doors → straight ahead → front rows"
+    }
+  ],
+  "markers": [
+    {
+      "kind": "entrance",
+      "label": "Main entrance",
+      "level": 0,
+      "x": 30,
+      "y": 72,
+      "status": "open"
+    }
+  ]
+}

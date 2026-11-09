@@ -1,3 +1,5 @@
+import type { AreaKind, PlanMeta, Shape } from "./plan";
+
 /**
  * Domain types for the Layovr prototype.
  * Shared by the web app and the API. They mirror the tables in
@@ -19,17 +21,29 @@ export type Venue = {
   feePct: number; // e.g. 0.04 = 4% of subtotal
   feeFlatKobo: number;
   absorbLimitKobo: number; // price gap we cover without calling the buyer
-  floorPlanUrl?: string; // data URL or hosted image; schematic used when absent
+  floorPlanUrl?: string; // traced image drawn under the plan shapes
   isSample: boolean;
+  /** Canvas, levels, sections and markers from the venue's layovr-plan file. */
+  plan?: PlanMeta;
 };
 
+/** An area of a venue plan (a hall, lounge, food court, gate…). Orders are routed by zone. */
 export type Zone = {
   id: string;
   venueId: string;
+  /** Short code from the plan, e.g. EXH1. */
+  code: string;
   name: string;
   restricted: boolean;
-  /** Rectangle on the schematic plan, in % of plan width/height. */
-  rect: { x: number; y: number; w: number; h: number };
+  /** Outline in plan canvas units. */
+  shape: Shape;
+  kind: AreaKind;
+  /** Signposted part of the building, e.g. "B" for Zone B. */
+  section?: string;
+  /** Floor number; absent when the area spans every floor. */
+  level?: number;
+  approximate?: boolean;
+  notes?: string;
 };
 
 export type Spot = {
@@ -128,6 +142,30 @@ export type OrderEvent = {
   by: string; // "buyer", "system", staff name
 };
 
+/** How the buyer told us where they are. */
+export type LocateMethod = "qr" | "map" | "gps" | "list";
+
+/** Where exactly the buyer is, when they tapped the map or used GPS (plan canvas units). */
+export type Pinpoint = {
+  method: LocateMethod;
+  x?: number;
+  y?: number;
+  level?: number;
+  accuracyM?: number;
+};
+
+/** A runner's last known position (staff only). Cleared when they have no active orders. */
+export type RunnerPosition = {
+  runnerId: string;
+  x?: number;
+  y?: number;
+  accuracyM: number;
+  updatedAt: string;
+};
+
+/** The colour a buyer and runner both hold up to find each other. See MATCH_SIGNALS. */
+export type MatchSignal = { color: string; pattern: "solid" | "stripes" | "flash" };
+
 export type Order = {
   id: string; // also the Flutterwave tx_ref
   code: string; // LV-7KQ2, shown to buyers and sent by SMS
@@ -145,6 +183,12 @@ export type Order = {
   status: OrderStatus;
   runnerId?: string;
   etaAt?: string;
+  /** Set when the runner says they're in the buyer's area. */
+  arrivedAt?: string;
+  match?: MatchSignal;
+  pinpoint?: Pinpoint;
+  /** Buyer view only: roughly how far the runner is, in metres, while on the way. */
+  runnerDistanceM?: number;
   handoffPin: string;
   createdAt: string;
   events: OrderEvent[];
@@ -203,10 +247,12 @@ export type DB = {
   stats: Stats;
 };
 
-export type DemoAccount = { name: string; role: StaffRole; pin: string };
+export type DemoAccount = { name: string; role: StaffRole; pin: string; eventCode: string };
 
 export type Snapshot = DB & {
   me: Staff | null;
+  /** Dispatch and admin only. */
+  runnerPositions: RunnerPosition[];
   config: {
     paymentMode: "demo" | "flutterwave";
     allowReset: boolean;
@@ -227,6 +273,7 @@ export type Session = {
   cart: CartLine[];
   cartVenueId?: string;
   spotId?: string;
+  pinpoint?: Pinpoint;
   myOrderIds: string[];
   ageConfirmed?: boolean;
 };

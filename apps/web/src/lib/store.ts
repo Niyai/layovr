@@ -4,6 +4,7 @@ import type {
   CartLine,
   ItemStatus,
   Order,
+  Pinpoint,
   Product,
   Session,
   Snapshot,
@@ -54,6 +55,7 @@ const emptySnapshot: Snapshot = {
   purchases: [],
   stats: { vendorActive: {}, runnersFree: {} },
   me: null,
+  runnerPositions: [],
   config: { paymentMode: "demo", allowReset: false, demoAccounts: [] },
 };
 
@@ -242,10 +244,13 @@ export function getDB(): Snapshot {
 
 /* ------------------------------------------------------------ buyer cart */
 
-export function setSpot(spotId: string | undefined) {
+/** Where the buyer is: the spot to deliver to, plus how they told us (QR, map, GPS, list). */
+export function setSpot(spotId: string | undefined, pinpoint?: Pinpoint) {
   const next: Session = { ...session };
   if (spotId) next.spotId = spotId;
   else delete next.spotId;
+  if (spotId && pinpoint) next.pinpoint = pinpoint;
+  else delete next.pinpoint;
   commitSession(next);
 }
 
@@ -311,6 +316,9 @@ export async function placeOrder(
       name: input.name.trim(),
       phone: input.phone.trim(),
       cart: session.cart,
+      ...(session.pinpoint && session.spotId === input.spotId
+        ? { pinpoint: session.pinpoint }
+        : {}),
     },
   });
   const next: Session = {
@@ -454,10 +462,11 @@ export function cancelOrder(orderId: string, reason: string, _by?: string) {
 
 /* ------------------------------------------------------------ staff */
 
-export async function staffLogin(pinEntered: string): Promise<Staff | null> {
+/** Staff sign in with their event's code (e.g. MOONSHOT) and their PIN. */
+export async function staffLogin(eventCode: string, pinEntered: string): Promise<Staff | null> {
   try {
     const me = await api<Staff>("/auth/login", {
-      body: { pin: pinEntered.trim() },
+      body: { code: eventCode.trim().toUpperCase(), pin: pinEntered.trim() },
     });
     await refresh();
     return me;
@@ -506,6 +515,62 @@ export function upsertProduct(product: Product) {
 
 export function deleteProduct(id: string) {
   return act(`/admin/products/${id}`, {}, "DELETE");
+}
+
+export type PlanImportResult = {
+  ok: boolean;
+  applied: boolean;
+  errors: string[];
+  warnings: string[];
+};
+
+/** Checks a layovr-plan file on the server; applies it unless dryRun. */
+export async function importPlan(
+  plan: unknown,
+  dryRun: boolean,
+): Promise<PlanImportResult> {
+  const res = await api<PlanImportResult>(
+    `/admin/plan${dryRun ? "?dryRun=1" : ""}`,
+    { body: plan },
+  );
+  if (res.applied) void refresh();
+  return res;
+}
+
+/** The venue's current plan as a layovr-plan file (includes edits made in admin). */
+export function exportPlan(): Promise<unknown> {
+  return api<unknown>("/admin/plan");
+}
+
+/** Runner phone → server, only while on an order. Returns false when the server isn't storing it. */
+export async function shareRunnerLocation(pos: {
+  lat: number;
+  lng: number;
+  accuracyM: number;
+}): Promise<boolean> {
+  try {
+    const res = await api<{ sharing: boolean }>("/runner/location", { body: pos });
+    return res.sharing;
+  } catch {
+    return false;
+  }
+}
+
+/** Admin: place the venue plan on the real map with GPS control points. */
+export async function saveGeo(
+  points: { x: number; y: number; lat: number; lng: number }[],
+): Promise<{ residualM: number[]; metresPerUnit: number }> {
+  const res = await api<{ residualM: number[]; metresPerUnit: number }>(
+    "/admin/plan/geo",
+    { method: "PATCH", body: { points } },
+  );
+  void refresh();
+  return res;
+}
+
+/** Buyer and runner can now raise their phones; the server picks the colour. */
+export function arriveNearBuyer(orderId: string) {
+  return act(`/orders/${orderId}/arrive`);
 }
 
 export async function resetDemo() {

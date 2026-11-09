@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { Fill } from "./types";
@@ -47,4 +48,14 @@ export async function compressImage(
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL("image/webp", quality);
+}
+
+const noSubscribe = () => () => {};
+/** This site's origin, e.g. https://layovr.app. Empty during server render so hydration matches. */
+export function useOrigin(): string {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => window.location.origin,
+    () => "",
+  );
 }

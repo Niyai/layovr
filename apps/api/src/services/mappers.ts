@@ -38,14 +38,21 @@ export const toVenue = (r: Row): Venue => ({
   feeFlatKobo: r.fee_flat_kobo,
   absorbLimitKobo: r.absorb_limit_kobo,
   ...opt("floorPlanUrl", r.floor_plan_url as string | null),
+  ...(r.plan ? { plan: r.plan } : {}),
 });
 
 export const toZone = (r: Row): Zone => ({
   id: r.id,
   venueId: r.venue_id,
+  code: r.code,
   name: r.name,
   restricted: r.restricted,
-  rect: r.rect,
+  shape: r.shape,
+  kind: r.kind,
+  ...opt("section", r.section as string | null),
+  ...opt("level", r.level as number | null),
+  ...(r.approximate ? { approximate: true } : {}),
+  ...opt("notes", r.notes as string | null),
 });
 
 export const toSpot = (r: Row): Spot => ({
@@ -192,6 +199,19 @@ export async function loadOrders(
       status: o.status as OrderStatus,
       ...opt("runnerId", o.runner_id as string | null),
       ...(o.eta_at ? { etaAt: iso(o.eta_at) } : {}),
+      ...(o.arrived_at ? { arrivedAt: iso(o.arrived_at) } : {}),
+      ...(o.match_color ? { match: { color: o.match_color, pattern: o.match_pattern ?? "solid" } } : {}),
+      ...(o.locate_method
+        ? {
+            pinpoint: {
+              method: o.locate_method,
+              ...opt("x", o.pin_x as number | null),
+              ...opt("y", o.pin_y as number | null),
+              ...opt("level", o.pin_level as number | null),
+              ...opt("accuracyM", o.pin_accuracy_m as number | null),
+            },
+          }
+        : {}),
       handoffPin: opts.withPin ? o.handoff_pin : "",
       createdAt: iso(o.created_at),
       events: events

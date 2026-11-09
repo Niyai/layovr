@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { SignalChip, SignalScreen, useSignalPrompt } from "@/components/MatchSignal";
 import { EmptyCard, Money, Section, StatusChip } from "@/components/ui-bits";
 import {
   STATUS_LABEL,
@@ -70,6 +71,8 @@ function OrderPage() {
   }, [orderId]);
 
   const order = d.orders.find((o) => o.id === orderId);
+  const signal = order?.status === "on_the_way" ? order.match : undefined;
+  const [showSignal, setShowSignal] = useSignalPrompt(signal);
   if (!hydrated || (!order && !checked))
     return (
       <Section>
@@ -122,6 +125,11 @@ function OrderPage() {
           {eta > 0 ? `About ${eta} min to go` : "Any minute now"}
         </p>
       )}
+      {order.runnerDistanceM !== undefined && (
+        <p className="mt-1 font-semibold">
+          📡 {runner?.name ?? "Your runner"} is about {order.runnerDistanceM} m away
+        </p>
+      )}
 
       {order.status === "awaiting_payment" && (
         <Link
@@ -155,6 +163,39 @@ function OrderPage() {
           ))}
         </ol>
       )}
+
+      {showSignal && signal && (
+        <SignalScreen
+          signal={signal}
+          title="Raise your phone!"
+          hint={`${runner?.name ?? "Your runner"} is nearby and looking for this colour.`}
+          onClose={() => setShowSignal(false)}
+        />
+      )}
+      {order.status === "on_the_way" &&
+        (signal ? (
+          <div className="card-pop mt-8 grid gap-3 bg-card p-6">
+            <h2 className="text-2xl font-extrabold">
+              📱 {runner?.name ?? "Your runner"} is in your area
+            </h2>
+            <p>
+              Hold your phone up high so they can spot you. Their phone shows the
+              same colour: <SignalChip signal={signal} />
+            </p>
+            <button
+              type="button"
+              className="btn w-full bg-coral sm:w-fit"
+              onClick={() => setShowSignal(true)}
+            >
+              Show my colour
+            </button>
+          </div>
+        ) : (
+          <p className="mt-6 rounded-2xl border-2 border-dashed border-ink/40 p-4 text-sm">
+            When your runner reaches your area, this page will light up with a
+            colour. Hold your phone up so they can find you.
+          </p>
+        ))}
 
       {live && (
         <div className="card-pop mt-8 grid gap-4 bg-sun p-6 sm:grid-cols-[auto_1fr] sm:items-center">

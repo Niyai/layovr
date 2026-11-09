@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FloorPlan, type PlanDot } from "@/components/FloorPlan";
+import { LocateBadge } from "@/components/LocateBadge";
 import { RequireStaff } from "@/components/RequireStaff";
 import { Money, StatusChip } from "@/components/ui-bits";
 import {
@@ -102,18 +103,27 @@ function OpsBoard({ me }: { me: Staff }) {
   const active = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
   const dots: PlanDot[] = active.flatMap((o) => {
     const s = d.spots.find((x) => x.id === o.spotId);
+    const level = d.zones.find((z) => z.id === s?.zoneId)?.level;
     return s
       ? [
           {
             id: o.id,
-            x: s.x,
-            y: s.y,
+            x: o.pinpoint?.x ?? s.x,
+            y: o.pinpoint?.y ?? s.y,
             className: DOT[o.status] ?? "bg-card",
             label: `${o.code} · ${o.status}`,
+            ...(level === undefined ? {} : { level }),
           },
         ]
       : [];
   });
+  // Runners on an order, where the plan is linked to GPS. Fixes older than 2 min are hidden.
+  for (const p of d.runnerPositions) {
+    const r = d.staff.find((s) => s.id === p.runnerId);
+    if (p.x === undefined || p.y === undefined || !r) continue;
+    if (Date.now() - new Date(p.updatedAt).getTime() > 120_000) continue;
+    dots.push({ id: `r_${p.runnerId}`, x: p.x, y: p.y, icon: "🛵", label: r.name, className: "" });
+  }
   const delivered = orders.filter((o) => o.status === "delivered");
   const revenueFee = delivered.reduce((s, o) => s + o.feeKobo, 0);
 
@@ -190,6 +200,7 @@ function OpsBoard({ me }: { me: Staff }) {
                 <Legend c="bg-lilac" t="Assigned" />
                 <Legend c="bg-blush" t="Buying" />
                 <Legend c="bg-coral" t="On the way" />
+                <span>🛵 runner</span>
               </span>
             }
           />
@@ -428,6 +439,7 @@ function OrderCard({
         <StatusChip status={o.status} />
       </header>
       <p className="mt-2 font-semibold">📍 {spot?.label ?? "Unknown spot"}</p>
+      <LocateBadge pinpoint={o.pinpoint} />
       {zone?.restricted && (
         <p className="text-xs font-bold text-destructive">
           Restricted area: needs a 🔑 runner

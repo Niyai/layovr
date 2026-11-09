@@ -1,48 +1,24 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { VenuePage } from "@/components/VenuePage";
-import { EmptyCard, Section } from "@/components/ui-bits";
-import { setSpot, spotByCode, useDB, useHydrated } from "@/lib/store";
+import { createFileRoute } from "@tanstack/react-router";
+import { SpotLanding } from "@/components/SpotLanding";
+import { useDB } from "@/lib/store";
 
 /**
- * What every printed QR code points at: /s/<SPOT-CODE>.
- * Remembers the spot for checkout, then shows that venue's vendors.
+ * Older QR cards: /s/<SPOT-CODE> without the event. Works when the code is
+ * unique among live events; otherwise asks which event. New cards use /e/<EVENT>/<SPOT>.
  */
 export const Route = createFileRoute("/s/$spot")({
   head: () => ({ meta: [{ title: "Order to your spot · Layovr" }] }),
-  component: SpotRoute,
+  component: LegacySpotRoute,
 });
 
-function SpotRoute() {
+function LegacySpotRoute() {
   const { spot: code } = Route.useParams();
   const d = useDB();
-  const hydrated = useHydrated();
-  const spot = spotByCode(d, code);
-  const venue = spot ? d.venues.find((v) => v.id === spot.venueId) : undefined;
-
-  useEffect(() => {
-    if (hydrated && spot) setSpot(spot.id);
-  }, [hydrated, spot?.id]);
-
-  if (!spot || !venue) {
-    return (
-      <Section>
-        <EmptyCard
-          emoji="🔎"
-          title="That code isn't active"
-          action={
-            <Link to="/scan" className="btn bg-coral">
-              Try another code
-            </Link>
-          }
-        >
-          <p>
-            The card may have moved. Pick your spot from the list instead, or
-            ask a Layovr runner.
-          </p>
-        </EmptyCard>
-      </Section>
-    );
-  }
-  return <VenuePage code={venue.code} />;
+  const matches = d.spots
+    .filter((s) => s.active && s.code.toLowerCase() === code.toLowerCase())
+    .flatMap((spot) => {
+      const venue = d.venues.find((v) => v.id === spot.venueId);
+      return venue ? [{ venue, spot }] : [];
+    });
+  return <SpotLanding venue={matches[0]?.venue} spot={matches[0]?.spot} matches={matches} />;
 }

@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { SpotPicker } from "@/components/SpotPicker";
+import { LocateMe } from "@/components/LocateMe";
 import {
   EmptyCard,
   Field,
@@ -36,6 +36,7 @@ function Checkout() {
   const [email, setEmail] = useState("");
   const [landmark, setLandmark] = useState("");
   const [busy, setBusy] = useState(false);
+  const [changingSpot, setChangingSpot] = useState(false);
 
   const venue = d.venues.find((v) => v.id === session.cartVenueId);
   const lines = session.cart
@@ -210,14 +211,33 @@ function Checkout() {
         >
           <h2 className="text-2xl font-extrabold">Where should we bring it?</h2>
           <div className="mt-5 grid gap-4">
-            <Field label="Your spot">
-              <SpotPicker
-                d={d}
-                venueId={venue.id}
-                value={spotOk ? session.spotId : undefined}
-                onChange={setSpot}
-              />
-            </Field>
+            <div>
+              <span className="mb-1.5 block text-sm font-bold">Your spot</span>
+              {spotOk && !changingSpot ? (
+                <div className="flex items-center justify-between gap-2 rounded-2xl border-2 border-ink bg-card p-3">
+                  <span className="font-semibold">
+                    📍 {d.spots.find((s) => s.id === session.spotId)?.label}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-sm font-bold underline"
+                    onClick={() => setChangingSpot(true)}
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <LocateMe
+                  d={d}
+                  venue={venue}
+                  value={spotOk ? session.spotId : undefined}
+                  onPick={(id, pinpoint) => {
+                    setSpot(id, pinpoint);
+                    setChangingSpot(false);
+                  }}
+                />
+              )}
+            </div>
             <Field
               label="Anything that helps us find you?"
               hint="Optional, e.g. ‘blue shirt, aisle seat’"

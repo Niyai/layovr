@@ -64,9 +64,13 @@ export function venueByCode(d: DB, code: string): Venue | undefined {
   return d.venues.find((v) => v.code.toLowerCase() === code.toLowerCase());
 }
 
-export function spotByCode(d: DB, code: string): Spot | undefined {
+/** A spot by its printed code, within one event when venueId is given (codes repeat across events). */
+export function spotByCode(d: DB, code: string, venueId?: string): Spot | undefined {
   return d.spots.find(
-    (s) => s.code.toLowerCase() === code.toLowerCase() && s.active,
+    (s) =>
+      s.code.toLowerCase() === code.toLowerCase() &&
+      s.active &&
+      (venueId === undefined || s.venueId === venueId),
   );
 }
 
@@ -107,4 +111,46 @@ export function runnerFloat(
     spentKobo,
     leftKobo: runner.floatKobo - spentKobo,
   };
+}
+
+/**
+ * "Raise your phone": when a runner reaches the buyer's area, both screens turn
+ * the same colour. Each signal pairs a colour with a symbol and a name so it
+ * still works for colour-blind people and in bright sunlight. The server never
+ * gives two pairs in the same area the same signal; once all ten colours are in
+ * use there, it adds stripes, then a slow flash (1 Hz, well under the 3 Hz
+ * photosensitivity limit).
+ */
+export const MATCH_COLORS = [
+  { key: "blue", name: "Blue", hex: "#1E5BFF", symbol: "▲", ink: "#FFFFFF" },
+  { key: "yellow", name: "Yellow", hex: "#FFD400", symbol: "■", ink: "#111111" },
+  { key: "pink", name: "Pink", hex: "#FF4FA3", symbol: "♥", ink: "#111111" },
+  { key: "green", name: "Green", hex: "#00A651", symbol: "★", ink: "#FFFFFF" },
+  { key: "orange", name: "Orange", hex: "#FF7A00", symbol: "✚", ink: "#111111" },
+  { key: "purple", name: "Purple", hex: "#8E24AA", symbol: "◆", ink: "#FFFFFF" },
+  { key: "cyan", name: "Cyan", hex: "#00C2D1", symbol: "⬢", ink: "#111111" },
+  { key: "red", name: "Red", hex: "#E53935", symbol: "●", ink: "#FFFFFF" },
+  { key: "white", name: "White", hex: "#FFFFFF", symbol: "✱", ink: "#111111" },
+  { key: "black", name: "Black", hex: "#111111", symbol: "☾", ink: "#FFFFFF" },
+] as const;
+
+export const MATCH_PATTERNS = ["solid", "stripes", "flash"] as const;
+
+/** First signal not already taken in this area. */
+export function pickMatchSignal(
+  taken: { color: string; pattern: string }[],
+): { color: string; pattern: (typeof MATCH_PATTERNS)[number] } {
+  for (const pattern of MATCH_PATTERNS) {
+    for (const c of MATCH_COLORS) {
+      if (!taken.some((t) => t.color === c.key && t.pattern === pattern)) {
+        return { color: c.key, pattern };
+      }
+    }
+  }
+  // 30 pairs arriving in one area at once: repeat, the PIN still protects hand-off.
+  return { color: MATCH_COLORS[taken.length % MATCH_COLORS.length]!.key, pattern: "solid" };
+}
+
+export function matchColor(key: string) {
+  return MATCH_COLORS.find((c) => c.key === key) ?? MATCH_COLORS[0];
 }

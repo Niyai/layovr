@@ -56,12 +56,26 @@ const PAGES: Record<string, Info> = {
     intro:
       "Airports, malls, offices, estates and event organisers: we map your space, place the codes and run deliveries with your stores.",
     body: (
-      <p className="text-lg">
-        Tell us about your venue and we'll show you a pilot plan.{" "}
-        <a className="font-bold underline" href="mailto:hello@layovr.app">
-          hello@layovr.app
-        </a>
-      </p>
+      <div className="grid gap-4 text-lg">
+        <p>
+          Set up your event yourself: pick your venue from our Lagos library or draw your own map, invite vendors, and bring your runners or
+          ask us for ours.
+        </p>
+        <p className="flex flex-wrap gap-3">
+          <a className="btn bg-coral" href="/dashboard/signup">
+            Create a partner account
+          </a>
+          <a className="btn bg-card" href="/developers">
+            API & MCP for platforms
+          </a>
+        </p>
+        <p>
+          Bigger rollout or airport? Tell us about it:{" "}
+          <a className="font-bold underline" href="mailto:hello@layovr.app">
+            hello@layovr.app
+          </a>
+        </p>
+      </div>
     ),
   },
   about: {

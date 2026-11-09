@@ -8,7 +8,11 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { BackButton } from "@/components/BackButton";
+import { DashboardHeader } from "@/components/DashboardChrome";
+import { queryClient } from "@/lib/partnerApi";
 import { SiteFooter, SiteHeader, StaffHeader } from "@/components/SiteChrome";
 import { EmptyCard, Section } from "@/components/ui-bits";
 import { useConnection } from "@/lib/store";
@@ -16,7 +20,9 @@ import appCss from "../styles.css?url";
 
 const STAFF_PREFIXES = ["/ops", "/runner", "/admin", "/staff"];
 /** Pages that render without live data (everything else waits for the first snapshot). */
-const STATIC_PATHS = ["/", "/how-it-works"];
+const STATIC_PATHS = ["/", "/how-it-works", "/developers"];
+/** Pages with their own data (partner dashboard, vendor invites): no live snapshot needed. */
+const OWN_DATA_PREFIXES = ["/dashboard", "/join"];
 
 export const Route = createRootRoute({
   head: () => ({
@@ -72,7 +78,30 @@ function RootDocument({ children }: { children: ReactNode }) {
 }
 
 function RootLayout() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Layout />
+    </QueryClientProvider>
+  );
+}
+
+function Layout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const ownData = OWN_DATA_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+
+  if (path === "/dashboard" || path.startsWith("/dashboard/")) {
+    return (
+      <>
+        <DashboardHeader />
+        <main className="min-h-[calc(100vh-56px)] bg-muted/40">
+          <div className="mx-auto max-w-7xl px-4 pt-4">
+            <BackButton path={path} />
+          </div>
+          <Outlet />
+        </main>
+      </>
+    );
+  }
   const isStaff = STAFF_PREFIXES.some(
     (p) => path === p || path.startsWith(`${p}/`),
   );
@@ -82,6 +111,9 @@ function RootLayout() {
       <>
         <StaffHeader />
         <main className="min-h-[calc(100vh-56px)] bg-muted/40">
+          <div className="mx-auto max-w-7xl px-4 pt-4">
+            <BackButton path={path} />
+          </div>
           <DataGate>
             <Outlet />
           </DataGate>
@@ -93,7 +125,12 @@ function RootLayout() {
     <>
       <SiteHeader />
       <main>
-        {STATIC_PATHS.includes(path) ? (
+        {path !== "/" && (
+          <div className="mx-auto max-w-7xl px-4 pt-4">
+            <BackButton path={path} />
+          </div>
+        )}
+        {STATIC_PATHS.includes(path) || ownData ? (
           <Outlet />
         ) : (
           <DataGate>

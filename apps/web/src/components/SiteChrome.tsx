@@ -13,6 +13,7 @@ const NAV: { label: string; link: LinkOptions }[] = [
     link: { to: "/$page", params: { page: "become-a-vendor" } },
   },
   { label: "Partners", link: { to: "/$page", params: { page: "partners" } } },
+  { label: "Developers", link: { to: "/developers" } },
 ];
 
 export function Logo({ className }: { className?: string }) {
@@ -131,6 +132,8 @@ export function SiteFooter() {
           links={[
             ["/become-a-vendor", "Become a vendor"],
             ["/partners", "Partner with Layovr"],
+            ["/dashboard/login", "Partner dashboard"],
+            ["/developers", "API & MCP docs"],
             ["/staff", "Staff sign-in"],
           ]}
         />

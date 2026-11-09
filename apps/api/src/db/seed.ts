@@ -1,8 +1,9 @@
-import { makeSeed } from "@layovr/shared";
+import { makeSeed, planSchema } from "@layovr/shared";
 import { hashPin } from "../lib/auth";
+import { applyPlan } from "../services/plans";
 import type { Db, Queryable } from "./client";
 
-/** Loads the demo venues, Moonshot zones/spots, sample vendors and staff. */
+/** Loads the demo venues, the Moonshot plan (areas + spots), sample vendors and staff. */
 export async function seed(db: Db): Promise<void> {
   const s = makeSeed();
   await db.tx(async (q) => {
@@ -15,19 +16,8 @@ export async function seed(db: Db): Promise<void> {
          v.feePct, v.feeFlatKobo, v.absorbLimitKobo, v.floorPlanUrl ?? null],
       );
     }
-    for (const [i, z] of s.zones.entries()) {
-      await q.query(
-        "insert into zones (id, venue_id, name, restricted, rect, sort) values ($1,$2,$3,$4,$5,$6)",
-        [z.id, z.venueId, z.name, z.restricted, JSON.stringify(z.rect), i],
-      );
-    }
-    for (const sp of s.spots) {
-      await q.query(
-        `insert into spots (id, venue_id, zone_id, code, label, x, y, landmark, directions, active)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [sp.id, sp.venueId, sp.zoneId, sp.code, sp.label, sp.x, sp.y,
-         sp.landmark ?? null, sp.directions ?? null, sp.active],
-      );
+    for (const { venueId, plan } of s.plans) {
+      await applyPlan(q, venueId, planSchema.parse(plan));
     }
     for (const v of s.vendors) {
       await q.query(
@@ -49,6 +39,24 @@ export async function seed(db: Db): Promise<void> {
          p.inStock, p.fulfilment, p.durationMin ?? null, p.ageRestricted ?? false],
       );
     }
+    // Demo partner accounts (local development; see /api/partner/demo-logins).
+    await q.query(
+      `insert into partners (id, name, slug, kind) values
+         ('ptn_layovr', 'Layovr', 'layovr', 'layovr'),
+         ('ptn_demo', 'TechCabal (demo)', 'techcabal-demo', 'event_planner')`,
+    );
+    await q.query(
+      `insert into partner_users (id, partner_id, email, name, password_hash, role) values
+         ('pu_ops', 'ptn_layovr', 'ops@demo.layovr.app', 'Layovr Ops', $1, 'operator'),
+         ('pu_planner', 'ptn_demo', 'planner@demo.layovr.app', 'Demo Planner', $1, 'owner')`,
+      [hashPin("layovr-demo")],
+    );
+    await q.query(
+      `update venues set partner_id = 'ptn_demo', status = 'live', address = 'National Theatre, Iganmu, Lagos',
+         lat = 6.47639, lng = 3.36944, template_code = 'NATIONAL-THEATRE',
+         starts_at = '2026-10-28T08:00:00+01:00', ends_at = '2026-10-29T20:00:00+01:00'
+       where id = 'v_moonshot'`,
+    );
     for (const st of s.staff) {
       await q.query(
         `insert into staff (id, venue_id, name, role, phone, pin_hash, float_kobo,
@@ -69,8 +77,9 @@ export async function isEmpty(q: Queryable): Promise<boolean> {
 /** Admin → "Reset demo data": wipes every table and reloads the seed. */
 export async function resetData(db: Db): Promise<void> {
   await db.exec(
-    `truncate uploads, order_events, payments, purchases, order_items, order_stops,
-       orders, products, vendors, spots, zones, staff, venues restart identity cascade`,
+    `truncate api_audit, api_keys, invites, runner_locations, uploads, order_events, payments,
+       purchases, order_items, order_stops, orders, products, vendors, spots, zones, staff,
+       venues, partner_users, partners restart identity cascade`,
   );
   await seed(db);
 }

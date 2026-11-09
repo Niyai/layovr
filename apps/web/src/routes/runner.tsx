@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { distanceM } from "@layovr/shared";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { SignalChip, SignalScreen, useSignalPrompt } from "@/components/MatchSignal";
+import { LocateBadge } from "@/components/LocateBadge";
 import { RequireStaff } from "@/components/RequireStaff";
 import { Field, Money, StatusChip } from "@/components/ui-bits";
 import {
+  arriveNearBuyer,
   assignRunner,
   deliver,
   formatNaira,
@@ -13,6 +17,7 @@ import {
   markStopUnavailable,
   runnerFloat,
   setItemStatus,
+  shareRunnerLocation,
   startBuying,
   useDB,
 } from "@/lib/store";
@@ -50,6 +55,8 @@ function RunnerHome({ me }: { me: Staff }) {
     (o) => o.venueId === me.venueId && o.status === "paid",
   );
   const f = runnerFloat(d, runner);
+  // Only the runner's own phone shares location, and only while they have an order.
+  const locationStatus = useRunnerLocation(me.role === "runner" && runner.id === me.id && mine.length > 0);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6">
@@ -70,6 +77,22 @@ function RunnerHome({ me }: { me: Staff }) {
           </select>
         )}
       </div>
+
+      {locationStatus !== "off" && (
+        <p
+          className={cn(
+            "mt-3 rounded-xl border-2 border-ink px-3 py-1.5 text-sm font-semibold",
+            locationStatus === "on" ? "bg-mint" : "bg-blush",
+          )}
+          role="status"
+        >
+          {locationStatus === "on"
+            ? "📡 Sharing your location with dispatch while you're on an order"
+            : locationStatus === "denied"
+              ? "📡 Location is blocked. Allow it so dispatch and your buyer can see you're close."
+              : "📡 Can't get your location right now"}
+        </p>
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">
         <Mini label="Float" value={formatNaira(f.floatKobo)} />
@@ -122,6 +145,40 @@ function RunnerHome({ me }: { me: Staff }) {
   );
 }
 
+/**
+ * Sends the phone's position while enabled: at most every 15 s unless the
+ * runner has moved 25 m or more. Stops (and the server forgets) when disabled.
+ */
+function useRunnerLocation(enabled: boolean) {
+  const [status, setStatus] = useState<"off" | "on" | "denied" | "unavailable">("off");
+  useEffect(() => {
+    if (!enabled) {
+      setStatus("off");
+      return;
+    }
+    if (!("geolocation" in navigator)) {
+      setStatus("unavailable");
+      return;
+    }
+    let last: { t: number; lat: number; lng: number } | null = null;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        const now = Date.now();
+        if (last && now - last.t < 15_000 && distanceM(last.lat, last.lng, lat, lng) < 25) return;
+        last = { t: now, lat, lng };
+        void shareRunnerLocation({ lat, lng, accuracyM: accuracy }).then((ok) =>
+          setStatus(ok ? "on" : "off"),
+        );
+      },
+      (err) => setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "unavailable"),
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 30_000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [enabled]);
+  return status;
+}
+
 function Mini({
   label,
   value,
@@ -146,6 +203,7 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
   const eta = minutesFromNow(o.etaAt);
   const [pin, setPin] = useState("");
   const pending = o.stops.filter((s) => s.status === "pending").length;
+  const [showSignal, setShowSignal] = useSignalPrompt(o.match);
 
   return (
     <article className="card-pop overflow-hidden bg-card">
@@ -180,6 +238,7 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
             Last stop · the buyer
           </div>
           <p className="mt-1 text-lg font-extrabold">📍 {spot?.label}</p>
+          <LocateBadge pinpoint={o.pinpoint} />
           {o.landmark && <p>“{o.landmark}”</p>}
           {spot?.directions && (
             <p className="mt-1 text-sm text-muted-foreground">
@@ -208,6 +267,38 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
                 : "Head to the buyer"}
             </button>
           ) : (
+            <>
+            {showSignal && o.match && (
+              <SignalScreen
+                signal={o.match}
+                title={`Find ${o.customerName}`}
+                hint="Hold your phone up and look for a phone showing this colour."
+                onClose={() => setShowSignal(false)}
+              />
+            )}
+            {o.match ? (
+              <div className="mt-4 grid gap-2 rounded-2xl border-2 border-ink bg-card p-3">
+                <p className="text-sm font-bold">
+                  {o.customerName} has been asked to raise their phone showing:
+                </p>
+                <SignalChip signal={o.match} />
+                <button
+                  type="button"
+                  className="btn btn-sm bg-sun"
+                  onClick={() => setShowSignal(true)}
+                >
+                  Show my colour full screen
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn mt-4 w-full bg-sun"
+                onClick={() => void arriveNearBuyer(o.id)}
+              >
+                📱 I'm in the area · light up both phones
+              </button>
+            )}
             <form
               className="mt-4 grid gap-2"
               onSubmit={async (e) => {
@@ -251,6 +342,7 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
                 Can't find the buyer
               </button>
             </form>
+            </>
           )}
         </li>
       </ol>

@@ -1,0 +1,619 @@
+{
+  "standard": "layovr-plan/1",
+  "venue": {
+    "code": "MOONSHOT",
+    "name": "Moonshot 2026 · National Theatre",
+    "city": "Iganmu, Lagos",
+    "type": "Event"
+  },
+  "canvas": {
+    "width": 100,
+    "height": 100,
+    "unit": "units",
+    "north": 0,
+    "notes": "Schematic from event signage, not to scale. Upper-floor rooms are approximate.",
+    "geo": {
+      "points": [
+        {
+          "x": 50,
+          "y": 50,
+          "lat": 6.47639,
+          "lng": 3.36944
+        },
+        {
+          "x": 50,
+          "y": 3,
+          "lat": 6.47702,
+          "lng": 3.36944
+        }
+      ],
+      "approximate": true
+    }
+  },
+  "levels": [
+    {
+      "level": 0,
+      "name": "Ground floor"
+    },
+    {
+      "level": 1,
+      "name": "First floor"
+    },
+    {
+      "level": 2,
+      "name": "Second floor"
+    },
+    {
+      "level": 3,
+      "name": "Third floor"
+    },
+    {
+      "level": 4,
+      "name": "Fourth floor"
+    },
+    {
+      "level": 5,
+      "name": "Fifth floor"
+    },
+    {
+      "level": 6,
+      "name": "Sixth floor"
+    }
+  ],
+  "sections": [
+    {
+      "code": "A",
+      "name": "Zone A",
+      "color": "#2B2257"
+    },
+    {
+      "code": "B",
+      "name": "Zone B",
+      "color": "#E8553B"
+    },
+    {
+      "code": "D",
+      "name": "Zone D",
+      "color": "#6B3FA0"
+    }
+  ],
+  "areas": [
+    {
+      "code": "BOWL",
+      "name": "Main Bowl",
+      "kind": "hall",
+      "shape": {
+        "type": "circle",
+        "cx": 50,
+        "cy": 50,
+        "r": 15
+      },
+      "capacity": 5000,
+      "notes": "Spans every floor. Enter from D5 or B5. Stages: Emerging Tech, Future of Money, Future of Commerce, Government Policy & Regulation, Creative Economy."
+    },
+    {
+      "code": "EXH1",
+      "name": "Exhibition Hall 1",
+      "section": "B",
+      "level": 0,
+      "kind": "exhibition",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 18,
+        "a1": 52
+      }
+    },
+    {
+      "code": "EXH2",
+      "name": "Exhibition Hall 2",
+      "section": "B",
+      "level": 0,
+      "kind": "exhibition",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 308,
+        "a1": 342
+      }
+    },
+    {
+      "code": "BANQ",
+      "name": "Banquet (lunch area)",
+      "section": "D",
+      "level": 0,
+      "kind": "food",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 200,
+        "a1": 252
+      }
+    },
+    {
+      "code": "CIN1",
+      "name": "Cinema Hall 1",
+      "section": "D",
+      "level": 0,
+      "kind": "hall",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 146,
+        "a1": 163
+      },
+      "notes": "Startup & Fuel Stage; Big Tech & Enterprise Stage"
+    },
+    {
+      "code": "CIN2",
+      "name": "Cinema Hall 2",
+      "section": "D",
+      "level": 0,
+      "kind": "hall",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 130,
+        "a1": 146
+      },
+      "notes": "Climate Tech Stage; Technical Workshops"
+    },
+    {
+      "code": "CIN3",
+      "name": "Cinema Hall 3",
+      "section": "D",
+      "level": 0,
+      "kind": "hall",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 114,
+        "a1": 130
+      },
+      "notes": "Climate Tech Stage; Technical Workshops"
+    },
+    {
+      "code": "A-LOBBY",
+      "name": "Zone A entrance",
+      "section": "A",
+      "level": 0,
+      "kind": "lobby",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 31,
+        "r1": 47,
+        "a0": 255,
+        "a1": 285
+      }
+    },
+    {
+      "code": "B-LOBBY",
+      "name": "Zone B entrance",
+      "section": "B",
+      "level": 0,
+      "kind": "lobby",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 31,
+        "r1": 47,
+        "a0": 345,
+        "a1": 375
+      }
+    },
+    {
+      "code": "D-LOBBY",
+      "name": "Zone D entrance",
+      "section": "D",
+      "level": 0,
+      "kind": "lobby",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 31,
+        "r1": 47,
+        "a0": 165,
+        "a1": 195
+      }
+    },
+    {
+      "code": "FOOD",
+      "name": "Food Village",
+      "section": "B",
+      "level": 0,
+      "kind": "outdoor",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 31,
+        "r1": 47,
+        "a0": 290,
+        "a1": 342
+      },
+      "notes": "Outside the building, between zones A and B."
+    },
+    {
+      "code": "DEAL",
+      "name": "Deal Room",
+      "section": "D",
+      "level": 2,
+      "kind": "meeting",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 30,
+        "a0": 165,
+        "a1": 195
+      },
+      "approximate": true
+    },
+    {
+      "code": "GREY",
+      "name": "Grey Exhibition",
+      "section": "D",
+      "level": 3,
+      "kind": "exhibition",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 47,
+        "a0": 160,
+        "a1": 200
+      },
+      "approximate": true
+    },
+    {
+      "code": "RT",
+      "name": "Roundtable & Startup Showcase",
+      "section": "B",
+      "level": 4,
+      "kind": "meeting",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 47,
+        "a0": 338,
+        "a1": 360
+      },
+      "approximate": true
+    },
+    {
+      "code": "PRIME",
+      "name": "Prime Lounge",
+      "section": "B",
+      "level": 4,
+      "kind": "lounge",
+      "access": "restricted",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 47,
+        "a0": 0,
+        "a1": 22
+      },
+      "approximate": true,
+      "notes": "VIP. Confirm which runners may enter."
+    },
+    {
+      "code": "EXH3",
+      "name": "Exhibition 3",
+      "section": "B",
+      "level": 5,
+      "kind": "exhibition",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 16,
+        "r1": 26,
+        "a0": 20,
+        "a1": 70
+      },
+      "approximate": true
+    },
+    {
+      "code": "MIXER",
+      "name": "Mixer",
+      "section": "B",
+      "level": 6,
+      "kind": "food",
+      "shape": {
+        "type": "sector",
+        "cx": 50,
+        "cy": 50,
+        "r0": 18,
+        "r1": 47,
+        "a0": 340,
+        "a1": 380
+      },
+      "approximate": true
+    }
+  ],
+  "spots": [
+    {
+      "code": "D5-BOWL-1",
+      "area": "BOWL",
+      "label": "Main Bowl · D5 entrance, left aisle",
+      "x": 51.5,
+      "y": 60.9,
+      "directions": "Zone D stairs to floor 5 → Main Bowl doors → left aisle"
+    },
+    {
+      "code": "D5-BOWL-2",
+      "area": "BOWL",
+      "label": "Main Bowl · D5 entrance, right aisle",
+      "x": 48.5,
+      "y": 60.9,
+      "directions": "Zone D stairs to floor 5 → Main Bowl doors → right aisle"
+    },
+    {
+      "code": "B5-BOWL-1",
+      "area": "BOWL",
+      "label": "Main Bowl · B5 entrance, left aisle",
+      "x": 48.5,
+      "y": 39.1,
+      "directions": "Zone B stairs to floor 5 → Main Bowl doors → left aisle"
+    },
+    {
+      "code": "B5-BOWL-2",
+      "area": "BOWL",
+      "label": "Main Bowl · B5 entrance, right aisle",
+      "x": 51.5,
+      "y": 39.1,
+      "directions": "Zone B stairs to floor 5 → Main Bowl doors → right aisle"
+    },
+    {
+      "code": "B5-BOWL-3",
+      "area": "BOWL",
+      "label": "Main Bowl · centre seating",
+      "x": 50,
+      "y": 47,
+      "directions": "Enter at B5 → down the centre aisle"
+    },
+    {
+      "code": "B0-EXH1-1",
+      "area": "EXH1",
+      "label": "Exhibition Hall 1 · front · B0",
+      "x": 62,
+      "y": 32.8,
+      "directions": "Zone B entrance → turn right → Exhibition Hall 1"
+    },
+    {
+      "code": "B0-EXH1-2",
+      "area": "EXH1",
+      "label": "Exhibition Hall 1 · back · B0",
+      "x": 65.5,
+      "y": 27.9,
+      "directions": "Zone B entrance → turn right → Exhibition Hall 1, back wall"
+    },
+    {
+      "code": "B0-EXH2-1",
+      "area": "EXH2",
+      "label": "Exhibition Hall 2 · front · B0",
+      "x": 38,
+      "y": 32.8,
+      "directions": "Zone B entrance → turn left → Exhibition Hall 2"
+    },
+    {
+      "code": "B0-EXH2-2",
+      "area": "EXH2",
+      "label": "Exhibition Hall 2 · back · B0",
+      "x": 34.5,
+      "y": 27.9,
+      "directions": "Zone B entrance → turn left → Exhibition Hall 2, back wall"
+    },
+    {
+      "code": "D0-BANQ-1",
+      "area": "BANQ",
+      "label": "Banquet · lunch area, near doors · D0",
+      "x": 34.2,
+      "y": 65.3,
+      "directions": "Zone D entrance → turn right → Banquet"
+    },
+    {
+      "code": "D0-BANQ-2",
+      "area": "BANQ",
+      "label": "Banquet · lunch area, far side · D0",
+      "x": 30.6,
+      "y": 68.8,
+      "directions": "Zone D entrance → turn right → Banquet, far side"
+    },
+    {
+      "code": "D0-CIN1-1",
+      "area": "CIN1",
+      "label": "Cinema Hall 1 · back rows · D0",
+      "x": 60.5,
+      "y": 71.6,
+      "directions": "Zone D entrance → turn left → first cinema"
+    },
+    {
+      "code": "D0-CIN2-1",
+      "area": "CIN2",
+      "label": "Cinema Hall 2 · back rows · D0",
+      "x": 66.1,
+      "y": 67.8,
+      "directions": "Zone D entrance → turn left → second cinema"
+    },
+    {
+      "code": "D0-CIN3-1",
+      "area": "CIN3",
+      "label": "Cinema Hall 3 · back rows · D0",
+      "x": 70.4,
+      "y": 62.7,
+      "directions": "Zone D entrance → turn left → third cinema"
+    },
+    {
+      "code": "B0-FOOD-1",
+      "area": "FOOD",
+      "label": "Food Village · seating near Zone B",
+      "x": 31,
+      "y": 17.1,
+      "directions": "Outside, between zones A and B"
+    },
+    {
+      "code": "B0-FOOD-2",
+      "area": "FOOD",
+      "label": "Food Village · seating near Zone A",
+      "x": 16.1,
+      "y": 28.8,
+      "directions": "Outside, between zones A and B, A side"
+    },
+    {
+      "code": "A0-LOBBY-1",
+      "area": "A-LOBBY",
+      "label": "Zone A entrance hall · A0",
+      "x": 12,
+      "y": 50
+    },
+    {
+      "code": "B0-LOBBY-1",
+      "area": "B-LOBBY",
+      "label": "Zone B entrance hall · B0",
+      "x": 50,
+      "y": 12
+    },
+    {
+      "code": "D0-LOBBY-1",
+      "area": "D-LOBBY",
+      "label": "Zone D entrance hall · D0",
+      "x": 50,
+      "y": 88
+    },
+    {
+      "code": "D2-DEAL-1",
+      "area": "DEAL",
+      "label": "Deal Room · D2",
+      "x": 50,
+      "y": 74,
+      "directions": "Zone D stairs to floor 2"
+    },
+    {
+      "code": "D3-GREY-1",
+      "area": "GREY",
+      "label": "Grey Exhibition · D3",
+      "x": 50,
+      "y": 82,
+      "directions": "Zone D stairs to floor 3"
+    },
+    {
+      "code": "B4-RT-1",
+      "area": "RT",
+      "label": "Roundtable & Startup Showcase · B4",
+      "x": 43.9,
+      "y": 18.6,
+      "directions": "Zone B stairs to floor 4 → left"
+    },
+    {
+      "code": "B4-PRIME-1",
+      "area": "PRIME",
+      "label": "Prime Lounge · B4",
+      "x": 56.1,
+      "y": 18.6,
+      "directions": "Zone B stairs to floor 4 → right (VIP)"
+    },
+    {
+      "code": "B5-EXH3-1",
+      "area": "EXH3",
+      "label": "Exhibition 3 · B5",
+      "x": 64.8,
+      "y": 35.2,
+      "directions": "Zone B stairs to floor 5 → around the bowl to the right"
+    },
+    {
+      "code": "B6-MIXER-1",
+      "area": "MIXER",
+      "label": "Mixer · B6",
+      "x": 50,
+      "y": 18,
+      "directions": "Zone B stairs to floor 6"
+    }
+  ],
+  "markers": [
+    {
+      "kind": "entrance",
+      "label": "Zone A entrance",
+      "level": 0,
+      "x": 3,
+      "y": 50
+    },
+    {
+      "kind": "entrance",
+      "label": "Zone B entrance",
+      "level": 0,
+      "x": 50,
+      "y": 3
+    },
+    {
+      "kind": "entrance",
+      "label": "Zone D entrance",
+      "level": 0,
+      "x": 50,
+      "y": 97
+    },
+    {
+      "kind": "entrance",
+      "label": "Zone C entrance",
+      "level": 0,
+      "x": 97,
+      "y": 50,
+      "status": "blocked",
+      "note": "Zone C not used by Moonshot"
+    },
+    {
+      "kind": "stairs",
+      "label": "Zone A stairs",
+      "x": 18,
+      "y": 50
+    },
+    {
+      "kind": "stairs",
+      "label": "Zone B stairs",
+      "x": 50,
+      "y": 18
+    },
+    {
+      "kind": "stairs",
+      "label": "Zone D stairs",
+      "x": 50,
+      "y": 82
+    },
+    {
+      "kind": "ops_desk",
+      "label": "Layovr ops desk (confirm on site)",
+      "level": 0,
+      "x": 39.1,
+      "y": 90.6
+    }
+  ]
+}

@@ -1,16 +1,22 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PLAN_TEMPLATE, areaAt } from "@layovr/shared";
 import { FloorPlan } from "@/components/FloorPlan";
+import { useGpsCalibration } from "@/components/GpsCalibration";
 import { QrImage, downloadQr, spotUrl } from "@/components/QrImage";
 import { RequireStaff } from "@/components/RequireStaff";
 import { Field, Money } from "@/components/ui-bits";
 import {
   deleteProduct,
   deleteSpot,
+  exportPlan,
   feeFor,
+  importPlan,
+  type PlanImportResult,
   formatNaira,
   resetDemo,
+  saveGeo,
   uid,
   updateVenue,
   updateZone,
@@ -87,16 +93,23 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
   const spots = d.spots.filter((s) => s.venueId === venue.id);
   const [edit, setEdit] = useState<Spot | null>(null);
 
-  const zoneAt = (x: number, y: number) =>
-    zones.find(
-      (z) =>
-        x >= z.rect.x &&
-        x <= z.rect.x + z.rect.w &&
-        y >= z.rect.y &&
-        y <= z.rect.y + z.rect.h,
-    )?.id ??
-    zones[0]?.id ??
-    "";
+  const zoneAt = (x: number, y: number, level: number) =>
+    areaAt(zones, x, y, level)?.id ?? zones[0]?.id ?? "";
+
+  /** Next free code in the standard format: section + level, area, number (B0-EXH1-3). */
+  const suggestCode = (zoneId: string) => {
+    const z = zones.find((x) => x.id === zoneId);
+    if (!z) return "";
+    const prefix = `${z.section ?? ""}${z.level ?? ""}`;
+    const stem = `${prefix ? `${prefix}-` : ""}${z.code}-`;
+    let n = 1;
+    while (d.spots.some((s) => s.code === `${stem}${n}`)) n++;
+    return `${stem}${n}`;
+  };
+  const newSpot = (zoneId: string, x?: number, y?: number) => ({
+    ...blankSpot(venue, zoneId, x, y),
+    code: suggestCode(zoneId),
+  });
 
   const save = () => {
     if (!edit) return;
@@ -125,11 +138,11 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
           zones={zones}
           spots={spots.filter((s) => s.active)}
           {...(edit ? { highlightSpotId: edit.id } : {})}
-          onPlace={(x, y) =>
+          onPlace={(x, y, level) =>
             setEdit(
               edit
-                ? { ...edit, x, y, zoneId: zoneAt(x, y) }
-                : blankSpot(venue, zoneAt(x, y), x, y),
+                ? { ...edit, x, y, zoneId: zoneAt(x, y, level) }
+                : newSpot(zoneAt(x, y, level), x, y),
             )
           }
           onSpotClick={(s) => setEdit(s)}
@@ -142,7 +155,7 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
           <button
             type="button"
             className="btn bg-card"
-            onClick={() => setEdit(blankSpot(venue, zones[0]?.id ?? ""))}
+            onClick={() => setEdit(newSpot(zones[0]?.id ?? ""))}
           >
             + New spot
           </button>
@@ -169,7 +182,7 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
                   className="field font-mono uppercase"
                   value={edit.code}
                   onChange={(e) => setEdit({ ...edit, code: e.target.value })}
-                  placeholder="MB-C2"
+                  placeholder="B0-EXH1-3"
                 />
               </Field>
               <Field label="Zone">
@@ -181,6 +194,9 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
                   {zones.map((z) => (
                     <option key={z.id} value={z.id}>
                       {z.name}
+                      {z.section || z.level !== undefined
+                        ? ` (${z.section ?? ""}${z.level ?? "all floors"})`
+                        : ""}
                     </option>
                   ))}
                 </select>
@@ -258,7 +274,7 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
                 .map((s) => (
                   <li key={s.id} className="flex items-center gap-3 px-5 py-3">
                     <QrImage
-                      value={spotUrl(s.code)}
+                      value={spotUrl(venue.code, s.code)}
                       size={56}
                       className="rounded border border-ink/20"
                     />
@@ -273,7 +289,7 @@ function SpotsTab({ d, venue }: { d: DB; venue: Venue }) {
                     <button
                       type="button"
                       className="btn btn-sm bg-card"
-                      onClick={() => void downloadQr(s.code, s.label)}
+                      onClick={() => void downloadQr(venue.code, s.code, s.label)}
                     >
                       PNG
                     </button>
@@ -400,22 +416,167 @@ function MenusTab({ d, venue }: { d: DB; venue: Venue }) {
 
 /* ---------------------------------------------------------------- floor plan */
 
+function downloadJson(name: string, data: unknown) {
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function PlanTab({ d, venue }: { d: DB; venue: Venue }) {
   const zones = d.zones.filter((z) => z.venueId === venue.id);
+  const cal = useGpsCalibration(venue, saveGeo);
+  const [pending, setPending] = useState<{ name: string; plan: unknown } | null>(null);
+  const [result, setResult] = useState<PlanImportResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const check = async (name: string, text: string) => {
+    setResult(null);
+    let plan: unknown;
+    try {
+      plan = JSON.parse(text);
+    } catch {
+      setResult({ ok: false, applied: false, errors: [`${name} isn't valid JSON`], warnings: [] });
+      return;
+    }
+    setPending({ name, plan });
+    try {
+      setResult(await importPlan(plan, true));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const apply = async () => {
+    if (!pending) return;
+    setBusy(true);
+    try {
+      const r = await importPlan(pending.plan, false);
+      setResult(r);
+      if (r.applied) {
+        toast.success("Plan applied");
+        setPending(null);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
       <FloorPlan
         venue={venue}
         zones={zones}
         spots={d.spots.filter((s) => s.venueId === venue.id && s.active)}
+        {...(cal.awaitingClick ? { onPlace: cal.place } : {})}
+        caption={
+          cal.awaitingClick
+            ? "Now click the exact place you're standing on the plan."
+            : "Dashed outline = approximate, check on the site walk. Hatched = restricted. ⛔ = blocked entrance."
+        }
       />
       <div className="grid h-fit gap-4">
+        {cal.panel}
+
         <section className="card-pop bg-card p-5">
-          <h2 className="text-xl font-extrabold">Floor plan image</h2>
+          <h2 className="text-xl font-extrabold">Venue plan file</h2>
           <p className="mt-1 text-sm">
-            Upload the organiser's plan or a clean redraw from the site walk
-            (4:3 works best). Spots are stored as % positions, so check them
-            after swapping images.
+            The whole map (floors, zones, halls, QR spots, entrances) lives in
+            one file in the <b>layovr-plan/1</b> format. Download it, edit it
+            (or start from the template), and upload it back. Re-uploading
+            updates things in place; nothing is deleted. Guide:
+            docs/PLAN-STANDARD.md.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-sm bg-card"
+              onClick={async () => {
+                try {
+                  downloadJson(`${venue.code.toLowerCase()}.plan.json`, await exportPlan());
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
+              ⬇ Current plan
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm bg-card"
+              onClick={() => downloadJson("venue-plan.template.json", PLAN_TEMPLATE)}
+            >
+              ⬇ Blank template
+            </button>
+          </div>
+          <label className="mt-4 block text-sm font-bold">
+            Upload a plan file
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="mt-1 block w-full text-sm"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) await check(file.name, await file.text());
+                e.target.value = "";
+              }}
+            />
+          </label>
+          {result && (
+            <div className="mt-4 grid gap-2 text-sm" aria-live="polite">
+              {result.applied ? (
+                <p className="font-bold">✅ Applied.</p>
+              ) : result.ok ? (
+                <p className="font-bold">✅ {pending?.name} looks good.</p>
+              ) : (
+                <p className="font-bold text-destructive">
+                  {pending?.name ?? "The file"} can't be used yet:
+                </p>
+              )}
+              {result.errors.length > 0 && (
+                <ul className="list-disc pl-5 text-destructive">
+                  {result.errors.map((e) => (
+                    <li key={e}>{e}</li>
+                  ))}
+                </ul>
+              )}
+              {result.warnings.length > 0 && (
+                <details>
+                  <summary className="cursor-pointer font-bold">
+                    {result.warnings.length} thing{result.warnings.length === 1 ? "" : "s"} to check
+                  </summary>
+                  <ul className="mt-1 list-disc pl-5">
+                    {result.warnings.map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {result.ok && !result.applied && (
+                <button
+                  type="button"
+                  className="btn btn-sm w-fit bg-coral"
+                  disabled={busy}
+                  onClick={() => void apply()}
+                >
+                  Apply to {venue.code}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="card-pop bg-card p-5">
+          <h2 className="text-xl font-extrabold">Tracing image</h2>
+          <p className="mt-1 text-sm">
+            Optional: the organiser's drawing, shown faintly under the plan so
+            you can line shapes up. It is stretched to the plan's canvas.
           </p>
           <input
             type="file"
@@ -427,7 +588,7 @@ function PlanTab({ d, venue }: { d: DB; venue: Venue }) {
               updateVenue(venue.id, {
                 floorPlanUrl: await compressImage(file, 1600, 0.8),
               });
-              toast.success("Floor plan updated");
+              toast.success("Tracing image updated");
             }}
           />
           {venue.floorPlanUrl && (
@@ -436,20 +597,31 @@ function PlanTab({ d, venue }: { d: DB; venue: Venue }) {
               className="btn btn-sm mt-3 bg-card"
               onClick={() => updateVenue(venue.id, { floorPlanUrl: "" })}
             >
-              Use the schematic instead
+              Remove image
             </button>
           )}
         </section>
+
         <section className="card-pop bg-card p-5">
-          <h2 className="text-xl font-extrabold">Zones</h2>
+          <h2 className="text-xl font-extrabold">Areas</h2>
           <ul className="mt-3 grid gap-3">
             {zones.map((z) => (
-              <li key={z.id} className="flex flex-wrap items-center gap-3">
+              <li key={z.id} className="flex flex-wrap items-center gap-2">
+                <span className="chip w-16 justify-center bg-sun font-mono text-[10px]">
+                  {z.code}
+                </span>
+                <span className="w-14 text-xs font-bold text-muted-foreground">
+                  {z.section ?? ""}
+                  {z.level ?? "all"}
+                  {z.approximate ? " ~" : ""}
+                </span>
                 <input
-                  className="field flex-1 py-2"
+                  className="field min-w-0 flex-1 py-2"
                   defaultValue={z.name}
-                  onBlur={(e) => updateZone(z.id, { name: e.target.value })}
-                  aria-label="Zone name"
+                  onBlur={(e) =>
+                    e.target.value !== z.name && updateZone(z.id, { name: e.target.value })
+                  }
+                  aria-label={`${z.code} name`}
                 />
                 <label className="flex items-center gap-2 text-sm font-bold">
                   <input
@@ -466,8 +638,8 @@ function PlanTab({ d, venue }: { d: DB; venue: Venue }) {
             ))}
           </ul>
           <p className="mt-3 text-xs text-muted-foreground">
-            Orders to restricted zones only go to runners with access (🔑 on the
-            ops board).
+            Orders to restricted areas only go to runners with access (🔑 on the
+            ops board). ~ = approximate outline.
           </p>
         </section>
       </div>

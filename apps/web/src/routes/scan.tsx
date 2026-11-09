@@ -17,8 +17,14 @@ type DetectorCtor = new (opts: { formats: string[] }) => Detector;
 /** Turns a scanned URL or typed code into a route. */
 function resolveCode(
   raw: string,
-): { to: "/s/$spot"; spot: string } | { to: "/l/$code"; code: string } | null {
+):
+  | { to: "/s/$spot"; spot: string }
+  | { to: "/l/$code"; code: string }
+  | { to: "/e/$event/$spot"; event: string; spot: string }
+  | null {
   const text = raw.trim();
+  const eventSpot = text.match(/\/e\/([A-Za-z0-9-]+)\/([A-Za-z0-9-]+)/);
+  if (eventSpot?.[1] && eventSpot[2]) return { to: "/e/$event/$spot", event: eventSpot[1], spot: eventSpot[2] };
   const fromUrl = text.match(/\/(s|l)\/([A-Za-z0-9-]+)/);
   const d = getDB();
   if (fromUrl?.[1] === "s" && fromUrl[2])
@@ -47,7 +53,9 @@ function Scan() {
       );
       return;
     }
-    if (target.to === "/s/$spot")
+    if (target.to === "/e/$event/$spot")
+      void navigate({ to: "/e/$event/$spot", params: { event: target.event, spot: target.spot } });
+    else if (target.to === "/s/$spot")
       void navigate({ to: "/s/$spot", params: { spot: target.spot } });
     else void navigate({ to: "/l/$code", params: { code: target.code } });
   };
@@ -147,7 +155,7 @@ function Scan() {
         >
           <h2 className="text-2xl font-extrabold">Or type the code</h2>
           <p className="mt-1">
-            It's printed under the QR, like MB-C or MOONSHOT.
+            It's printed under the QR, like B0-EXH1-1 or MOONSHOT.
           </p>
           <div className="mt-5">
             <Field label="Code">
@@ -155,7 +163,7 @@ function Scan() {
                 className="field font-mono uppercase"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="MB-C"
+                placeholder="B0-EXH1-1"
                 autoCapitalize="characters"
               />
             </Field>
