@@ -33,6 +33,7 @@ const MARKER_ICON: Record<keyof typeof MARKER_KINDS, string> = {
   stairs: "🪜",
   lift: "🛗",
   escalator: "↗",
+  portal: "🚪",
   ops_desk: "🧭",
   toilet: "🚻",
   first_aid: "⛑️",

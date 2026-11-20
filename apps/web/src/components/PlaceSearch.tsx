@@ -1,29 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Field } from "@/components/ui-bits";
+import { VenueMap } from "@/components/VenueMap";
+import { googleEnabled, loadGoogle } from "@/lib/google";
 import { papi } from "@/lib/partnerApi";
 
 export type PickedPlace = { address: string; lat: number; lng: number; placeId?: string; city?: string };
 
-const GOOGLE_KEY = import.meta.env["VITE_GOOGLE_MAPS_API_KEY"] as string | undefined;
+const GOOGLE_KEY = googleEnabled();
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-let googleLoading: Promise<any> | null = null;
-
-/** Loads the Maps JavaScript API once (Places library, new Autocomplete element). */
-function loadGoogle(key: string): Promise<any> {
-  if (googleLoading) return googleLoading;
-  googleLoading = new Promise((resolve, reject) => {
-    const w = window as any;
-    if (w.google?.maps?.importLibrary) return resolve(w.google);
-    w.__layovrMaps = () => resolve(w.google);
-    const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&loading=async&libraries=places&callback=__layovrMaps`;
-    s.async = true;
-    s.onerror = () => reject(new Error("Couldn't load Google Maps"));
-    document.head.appendChild(s);
-  });
-  return googleLoading;
-}
 
 /**
  * Where is the event? Google Places Autocomplete when VITE_GOOGLE_MAPS_API_KEY
@@ -31,6 +16,7 @@ function loadGoogle(key: string): Promise<any> {
  */
 export function PlaceSearch({ value, onChange }: { value: PickedPlace | null; onChange: (p: PickedPlace) => void }) {
   const [mode, setMode] = useState<"google" | "osm" | "manual">(GOOGLE_KEY ? "google" : "osm");
+  const [adjust, setAdjust] = useState(false);
   return (
     <div className="grid gap-3">
       {value && (
@@ -47,9 +33,22 @@ export function PlaceSearch({ value, onChange }: { value: PickedPlace | null; on
               check on Google Maps
             </a>
           </div>
+          {GOOGLE_KEY && (
+            <button type="button" className="mt-2 font-bold underline" onClick={() => setAdjust((x) => !x)}>
+              {adjust ? "Done adjusting" : "Adjust the pin on a map"}
+            </button>
+          )}
         </div>
       )}
-      {mode === "google" && GOOGLE_KEY && <GooglePlaces apiKey={GOOGLE_KEY} onPick={onChange} onFail={() => setMode("osm")} />}
+      {value && adjust && (
+        <VenueMap
+          center={value}
+          pin={{ ...value, onMove: (p) => onChange({ ...value, ...p }) }}
+          hint="Drag the pin onto the venue's main entrance or building."
+          className="h-72"
+        />
+      )}
+      {mode === "google" && GOOGLE_KEY && <GooglePlaces onPick={onChange} onFail={() => setMode("osm")} />}
       {mode === "osm" && <OsmSearch onPick={onChange} />}
       {mode === "manual" && <ManualPlace value={value} onPick={onChange} />}
       <p className="text-xs">
@@ -67,12 +66,12 @@ export function PlaceSearch({ value, onChange }: { value: PickedPlace | null; on
   );
 }
 
-function GooglePlaces({ apiKey, onPick, onFail }: { apiKey: string; onPick: (p: PickedPlace) => void; onFail: () => void }) {
+function GooglePlaces({ onPick, onFail }: { onPick: (p: PickedPlace) => void; onFail: () => void }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let el: any;
     let cancelled = false;
-    loadGoogle(apiKey)
+    loadGoogle()
       .then(async (google) => {
         if (cancelled || !host.current) return;
         const { PlaceAutocompleteElement } = await google.maps.importLibrary("places");
@@ -80,10 +79,14 @@ function GooglePlaces({ apiKey, onPick, onFail }: { apiKey: string; onPick: (p: 
         el.setAttribute("placeholder", "Search for the venue, e.g. Landmark Centre");
         el.addEventListener("gmp-select", async ({ placePrediction }: any) => {
           const place = placePrediction.toPlace();
-          await place.fetchFields({ fields: ["displayName", "formattedAddress", "location", "id", "addressComponents"] });
+          // Basic fields only (Place Details Essentials). The name comes free with the suggestion;
+          // asking Google for displayName would bill the pricier Pro lookup.
+          await place.fetchFields({ fields: ["formattedAddress", "location", "id", "addressComponents"] });
           const city = place.addressComponents?.find((c: any) => c.types.includes("locality"))?.longText;
+          const name: string | undefined = placePrediction.mainText?.text;
+          const address: string = place.formattedAddress ?? name ?? "";
           onPick({
-            address: place.formattedAddress ?? place.displayName,
+            address: name && !address.startsWith(name) ? `${name}, ${address}` : address,
             lat: place.location.lat(),
             lng: place.location.lng(),
             placeId: place.id,
@@ -97,7 +100,7 @@ function GooglePlaces({ apiKey, onPick, onFail }: { apiKey: string; onPick: (p: 
       cancelled = true;
       el?.remove();
     };
-  }, [apiKey]);
+  }, []);
   return (
     <div>
       <div ref={host} className="rounded-2xl border-2 border-ink bg-card p-1" />

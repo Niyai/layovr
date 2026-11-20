@@ -33,6 +33,7 @@ export async function applyPlan(
     levels: plan.levels,
     sections: plan.sections,
     markers: plan.markers,
+    seating: plan.seating,
   };
   await q.query(
     `update venues set plan = $2, name = $3, city = coalesce($4, city) where id = $1`,
@@ -167,5 +168,6 @@ export async function exportPlan(ctx: Ctx, venueId: string): Promise<VenuePlan> 
       active: s.active,
     })),
     markers: meta?.markers ?? [],
+    seating: meta?.seating ?? [],
   };
 }

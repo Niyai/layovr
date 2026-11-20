@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LocateMe } from "@/components/LocateMe";
 import {
@@ -37,6 +37,10 @@ function Checkout() {
   const [landmark, setLandmark] = useState("");
   const [busy, setBusy] = useState(false);
   const [changingSpot, setChangingSpot] = useState(false);
+  // Ordering to a ticket's seat: the runner sees the seat in the note.
+  useEffect(() => {
+    if (session.seatNote && session.pinpoint?.method === "seat") setLandmark((l) => l || session.seatNote!);
+  }, [session.seatNote, session.pinpoint?.method]);
 
   const venue = d.venues.find((v) => v.id === session.cartVenueId);
   const lines = session.cart

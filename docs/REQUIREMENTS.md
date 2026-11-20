@@ -96,7 +96,7 @@ as an MCP tool unless stated otherwise.
 | ID | Requirement | P |
 | --- | --- | --- |
 | MCP-1 | **(built with API keys; OAuth 2.1 not yet)** Remote MCP server over Streamable HTTP, authorised with OAuth 2.1 as the MCP authorization spec requires, mapping to the same partner scopes as API keys. | P0 |
-| MCP-2 | **(built: 22 tools)** One tool per capability in sections 4.3–4.11, named `<area>_<verb>` (list in §5). Tool inputs reuse the API's zod schemas, so tools, API and docs never drift. | P0 |
+| MCP-2 | **(built: 26 tools)** One tool per capability in sections 4.3–4.11, named `<area>_<verb>` (list in §5). Tool inputs reuse the API's zod schemas, so tools, API and docs never drift. | P0 |
 | MCP-3 | **(built)** Any tool that changes live state requires `confirm: true` after a preview. The default call returns a dry run describing what would change (same pattern as plan import). Applies to: applying plans, blocking entrances, publishing menus, refunds, deactivating runners. | P0 |
 | MCP-4 | **(built)** Read-only resources: `plan://{venue}` (the plan file), `menu://{store}`, `order://{id}` (partner-scoped). | P1 |
 | MCP-5 | **(built: set_up_my_event)** Guided prompts for non-technical users: "Map my venue" (interview → generated plan → dry run), "Onboard a store", "Set up an event day". | P1 |
@@ -119,6 +119,7 @@ as an MCP tool unless stated otherwise.
 | MAP-10 | Event overlays: a temporary layer on a permanent venue plan (stages, food village, closures) for one event, without editing the base plan. | P1 |
 | MAP-11 | Routing: walking graph between areas via doors/stairs/lifts, walking times per edge, auto-ETA, and re-routing around blocked markers. | P2 |
 | MAP-12 | Crowd map: orders and scans per area over time, exportable for organisers. | P1 |
+| MAP-13 | **(built)** Place a plan on the real map by eye: drag, turn and size its outline over Google satellite imagery; saved as approximate GPS points until calibrated on site. | P0 |
 
 **Airport-specific (P1 unless stated):**
 
@@ -139,7 +140,9 @@ Shortlist of services and costs: [THIRD-PARTY-SERVICES.md](THIRD-PARTY-SERVICES.
 | LOC-2 | "Use my location": phone GPS is placed on the plan (plans carry GPS control points, set by admin calibration), the nearest spot is suggested for the buyer to confirm; fixes worse than 60 m fall back to the map. **(built)** | P0 |
 | LOC-3 | Runner live location while on an order: latest position only, no history, deleted when the runner has no active orders or signs out. Dispatch sees runners on the plan; buyers see only an approximate distance. **(built)** | P0 |
 | LOC-4 | Venue Wi-Fi presence: the access point a buyer's phone is connected to identifies their area (venue-specific integration). | P2 |
-| LOC-5 | Seat from ticket: a ticket's block/row/seat resolves to a spot automatically (with TIX-4). | P1 |
+| LOC-5 | **(built: "Order food to my seat" on the seat page)** Seat from ticket: a ticket's block/row/seat resolves to a spot automatically (with TIX-4). | P1 |
+| LOC-6 | **(built)** Buyer live location, opt-in per order while a runner is on it: latest position only, shown to that order's runner and dispatch, deleted when the order closes or the buyer stops sharing. | P0 |
+| LOC-7 | **(built)** Mobile vendors (carts, hawkers): vendor staff share the cart's position while it's open; buyers see fresh (≤ 2 min), accurate (≤ 100 m) positions on the event plan with an approximate distance. | P1 |
 
 ### 4.4 Spots, tags and QR codes
 
@@ -219,8 +222,21 @@ Shortlist of services and costs: [THIRD-PARTY-SERVICES.md](THIRD-PARTY-SERVICES.
 | --- | --- | --- |
 | TIX-1 | Ticket types, pricing, inventory and sales windows per event. | P2 |
 | TIX-2 | QR tickets with check-in scanning (offline-capable). | P2 |
-| TIX-3 | Seated events: seat map linked to plan areas, so a ticket's seat is a delivery spot without scanning anything. | P2 |
-| TIX-4 | Integrate with existing ticketing platforms (e.g. TIX) instead of competing: import attendees/seats, so partners keep their ticketing. | P1 |
+| TIX-3 | **(built: seat blocks in the plan, SEAT-1)** Seated events: seat map linked to plan areas, so a ticket's seat is a delivery spot without scanning anything. | P2 |
+| TIX-4 | **(built: CSV/JSON import and a check-in API; no direct platform connectors yet)** Integrate with existing ticketing platforms (e.g. TIX) instead of competing: import attendees/seats, so partners keep their ticketing. | P1 |
+
+### 4.10a Seats and guests (web, no indoor positioning)
+
+Guidance is relational: from the gate a ticket was scanned at (or a sign the guest scanned), via stairs and the block's portal, to a row and seat the guest can read. Exact without beacons; a live blue dot (beacons, App Clip / Instant App) is later work.
+
+| ID | Requirement | P |
+| --- | --- | --- |
+| SEAT-1 | **(built)** Seat blocks in `layovr-plan/1` (`seating`): straight or curved rows, row labels, seats per row, numbering direction, aisles, portal, ticket type, wheelchair spaces. Seat positions are generated, not stored. | P1 |
+| SEAT-2 | **(built)** Import tickets (number, barcode, holder, block/row/seat, ticket type, check-in, gate) from the organiser's ticketing system, with a dry run; record check-ins by API; made-up test tickets for trying it out. | P1 |
+| SEAT-3 | **(built)** Find my seat: guests scan their ticket barcode/QR (native reader, ZXing fallback on iPhone) or type the number, then get step-by-step directions, a seat chart and the venue map. Signs at gates and portals restart directions from there. | P1 |
+| SEAT-4 | **(built)** Seat change requests: a specific seat, any seat in a block, or next to friends. Organisers (dashboard, MCP) and on-site admin/dispatch (/seats) approve with a suggested free seat, or decline with a note. Optional automatic approval for free seats at the same ticket type. Paid upgrades not yet. | P1 |
+| SEAT-5 | **(built)** Friends at the event by group link (no contacts): members see first names and blocks; exact seats only when each friend allows it. Contact matching waits for a native app. | P2 |
+| SEAT-6 | Paid upgrades between ticket types (Flutterwave), guest-to-guest swaps, and offline check-in scanning. | P2 |
 
 ### 4.11 Hardware integration
 

@@ -93,7 +93,7 @@ export async function deleteSpot(ctx: Ctx, scope: Scope, id: string) {
   notify({ venueId: scope.venueId });
 }
 
-export async function upsertVendor(ctx: Ctx, scope: Scope, v: Vendor) {
+export async function upsertVendor(ctx: Ctx, scope: Scope, v: Omit<Vendor, "mobile">) {
   const [existing] = await ctx.db.query("select venue_id from vendors where id = $1", [v.id]);
   if (existing && existing.venue_id !== scope.venueId) throw notFound("Vendor not found");
   if (v.zoneId) {

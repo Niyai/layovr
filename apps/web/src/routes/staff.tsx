@@ -1,24 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { STAFF_HOME, signOutStaff } from "@/components/SiteChrome";
 import { Field } from "@/components/ui-bits";
 import { staffLogin, useDB, useHydrated } from "@/lib/store";
-import type { StaffRole } from "@/lib/types";
 
 export const Route = createFileRoute("/staff")({
   head: () => ({ meta: [{ title: "Staff sign-in · Layovr" }] }),
   component: StaffLogin,
 });
 
-const HOME: Record<
-  StaffRole,
-  "/admin" | "/ops" | "/runner" | "/admin/capture"
-> = {
-  admin: "/admin",
-  dispatch: "/ops",
-  runner: "/runner",
-  capture: "/admin/capture",
-};
 
 function StaffLogin() {
   const d = useDB();
@@ -34,9 +25,27 @@ function StaffLogin() {
   });
   const [busy, setBusy] = useState(false);
   const demo = d.config.demoAccounts;
+  const me = d.me;
 
   return (
     <div className="mx-auto grid max-w-4xl gap-8 px-4 py-12 md:grid-cols-2">
+      {me && (
+        <div className="card-pop bg-mint p-6 md:col-span-2">
+          <p className="flex items-center gap-2 font-bold">
+            <span className="h-2.5 w-2.5 rounded-full bg-card ring-2 ring-ink" aria-hidden />
+            You're signed in as {me.name} ({me.role})
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className="btn bg-coral" onClick={() => void navigate({ to: STAFF_HOME[me.role] })}>
+              Go to my screen
+            </button>
+            <button type="button" className="btn bg-card" onClick={() => void signOutStaff()}>
+              Sign out
+            </button>
+          </div>
+          <p className="mt-3 text-sm">To switch to someone else, sign in below.</p>
+        </div>
+      )}
       <form
         className="card-pop h-fit bg-sun p-8"
         onSubmit={async (e) => {
@@ -54,7 +63,7 @@ function StaffLogin() {
             return;
           }
           toast.success(`Hi ${me.name}`);
-          void navigate({ to: HOME[me.role] });
+          void navigate({ to: STAFF_HOME[me.role] });
         }}
       >
         <h1 className="text-3xl font-extrabold">Staff sign-in</h1>

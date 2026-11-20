@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { findSeat, seatBlockSchema, seatsOf } from "./seating";
 
 /**
  * Venue plans: the "layovr-plan/1" standard.
@@ -10,6 +11,7 @@ import { z } from "zod";
  *   areas    – rooms and spaces orders can go to (halls, lounges, food courts, gates)
  *   spots    – where a QR card sits; the delivery address
  *   markers  – entrances, stairs, lifts, the ops desk; entrances can be blocked
+ *   seating  – optional blocks of numbered seats (rows and seats), for guiding guests to their seat
  *
  * Human guide: docs/PLAN-STANDARD.md. Blank template: docs/templates/.
  */
@@ -79,6 +81,25 @@ export function shapePath(s: Shape): string {
       const [ix1, iy1] = polar(s.cx, s.cy, s.r0, s.a1).map(round) as [number, number];
       const [ix0, iy0] = polar(s.cx, s.cy, s.r0, s.a0).map(round) as [number, number];
       return `M${ox0} ${oy0}A${s.r1} ${s.r1} 0 ${large} 1 ${ox1} ${oy1}L${ix1} ${iy1}A${s.r0} ${s.r0} 0 ${large} 0 ${ix0} ${iy0}Z`;
+    }
+  }
+}
+
+/** A shape as a list of corner points (curves split into short straight lines), e.g. to draw it on a map. */
+export function shapePoints(s: Shape, step = 10): [number, number][] {
+  switch (s.type) {
+    case "rect":
+      return [[s.x, s.y], [s.x + s.w, s.y], [s.x + s.w, s.y + s.h], [s.x, s.y + s.h]];
+    case "polygon":
+      return s.points.map(([x, y]) => [x, y]);
+    case "circle":
+      return Array.from({ length: 36 }, (_, i) => polar(s.cx, s.cy, s.r, i * 10));
+    case "sector": {
+      const span = s.a1 - s.a0;
+      const n = Math.max(2, Math.ceil(span / step));
+      const arc = (r: number) => Array.from({ length: n + 1 }, (_, i) => polar(s.cx, s.cy, r, s.a0 + (span * i) / n));
+      const inner = s.r0 > 0 ? arc(s.r0).reverse() : [[s.cx, s.cy] as [number, number]];
+      return [...arc(s.r1), ...inner];
     }
   }
 }
@@ -186,6 +207,7 @@ export const MARKER_KINDS = {
   stairs: "Stairs between levels",
   lift: "Lift / elevator",
   escalator: "Escalator",
+  portal: "Way into a seating block (vomitory, auditorium door)",
   ops_desk: "Layovr ops desk (runners start here)",
   toilet: "Toilets",
   first_aid: "First aid",
@@ -290,6 +312,8 @@ export const planSchema = z.object({
       }),
     )
     .default([]),
+  /** Numbered seats, for seated events (see seating.ts). */
+  seating: z.array(seatBlockSchema).max(300).default([]),
 });
 
 export type VenuePlan = z.infer<typeof planSchema>;
@@ -298,7 +322,10 @@ export type VenuePlanInput = z.input<typeof planSchema>;
 export type PlanMarker = VenuePlan["markers"][number];
 
 /** Stored on the venue: everything in the plan except areas and spots (those are rows). */
-export type PlanMeta = Pick<VenuePlan, "standard" | "canvas" | "levels" | "sections" | "markers">;
+export type PlanMeta = Pick<VenuePlan, "standard" | "canvas" | "levels" | "sections" | "markers"> & {
+  /** Absent on plans saved before seating existed. */
+  seating?: VenuePlan["seating"];
+};
 
 export type PlanCheck = { ok: boolean; errors: string[]; warnings: string[]; plan?: VenuePlan };
 
@@ -326,6 +353,7 @@ export function checkPlan(input: unknown): PlanCheck {
   dupes(plan.areas.map((a) => a.code), "areas");
   dupes(plan.spots.map((s) => s.code), "spots");
   dupes(plan.levels.map((l) => String(l.level)), "levels");
+  dupes(plan.seating.map((b) => b.code), "seat blocks");
 
   const levels = new Set(plan.levels.map((l) => l.level));
   const sections = new Set(plan.sections.map((s) => s.code));
@@ -354,6 +382,25 @@ export function checkPlan(input: unknown): PlanCheck {
   }
   for (const m of plan.markers) {
     if (m.level !== undefined && !levels.has(m.level)) errors.push(`Marker "${m.label}" is on unknown level ${m.level}`);
+  }
+  const markerLabels = new Set(plan.markers.map((m) => m.label));
+  for (const b of plan.seating) {
+    const a = areas.get(b.area);
+    if (!a) errors.push(`Seat block ${b.code} points at unknown area ${b.area}`);
+    if (b.level !== undefined && !levels.has(b.level)) errors.push(`Seat block ${b.code} is on level ${b.level}, which isn't in levels`);
+    if (b.portal && !markerLabels.has(b.portal)) errors.push(`Seat block ${b.code} enters by "${b.portal}", but no marker has that label`);
+    if (Array.isArray(b.seatsPerRow) && Array.isArray(b.rows) && b.seatsPerRow.length !== b.rows.length) {
+      errors.push(`Seat block ${b.code} lists ${b.rows.length} rows but seat counts for ${b.seatsPerRow.length}`);
+    }
+    if (Array.isArray(b.rows) && new Set(b.rows).size !== b.rows.length) errors.push(`Seat block ${b.code} uses a row label twice`);
+    for (const s of b.accessible) {
+      const [row, seat] = s.split("-");
+      if (!row || !findSeat([b], b.code, row, Number(seat))) warnings.push(`Seat block ${b.code}: wheelchair space ${s} isn't a seat in the block`);
+    }
+    if (a) {
+      const outside = seatsOf(b).filter((p) => !pointInShape(p.x, p.y, a.shape)).length;
+      if (outside) warnings.push(`Seat block ${b.code}: ${outside} seats are drawn outside area ${a.code}`);
+    }
   }
   if (plan.canvas.geo) {
     const fit = fitGeo(plan.canvas.geo.points);
@@ -479,6 +526,42 @@ export function fitGeo(points: GeoPoint[]): GeoFit | null {
     return Math.hypot(x - p.x, y - p.y) / scale;
   });
   return { toCanvas, toGeo, metresPerUnit: 1 / scale, residualM };
+}
+
+/**
+ * GPS control points that put a canvas on the map: its centre at (lat, lng),
+ * turned rotationDeg clockwise from north-up, at metresPerUnit. Used to place a
+ * plan by eye over a satellite map before anyone calibrates on site.
+ */
+export function geoPointsFor(
+  canvas: { width: number; height: number },
+  place: { lat: number; lng: number; rotationDeg: number; metresPerUnit: number },
+): GeoPoint[] {
+  const { width: w, height: h } = canvas;
+  const { lat, lng, rotationDeg, metresPerUnit: s } = place;
+  const kx = 111_320 * Math.cos(rad(lat));
+  const ky = 110_540;
+  const t = rad(rotationDeg);
+  return ([[0, 0], [w, 0], [w, h], [0, h]] as const).map(([x, y]) => {
+    // Canvas offset from the centre in metres, east and north (canvas y grows downwards).
+    const dx = (x - w / 2) * s;
+    const dy = -(y - h / 2) * s;
+    // Clockwise rotation on the map.
+    const e = dx * Math.cos(t) + dy * Math.sin(t);
+    const n = -dx * Math.sin(t) + dy * Math.cos(t);
+    return { x, y, lat: lat + n / ky, lng: lng + e / kx };
+  });
+}
+
+/** The inverse of geoPointsFor for an existing fit: centre, rotation and scale. */
+export function placementOf(canvas: { width: number; height: number }, fit: GeoFit) {
+  const [lat, lng] = fit.toGeo(canvas.width / 2, canvas.height / 2);
+  const [nLat, nLng] = fit.toGeo(canvas.width / 2, 0);
+  const kx = 111_320 * Math.cos(rad(lat));
+  const ky = 110_540;
+  // Direction of the canvas "up" on the map, clockwise from north.
+  const rotationDeg = (Math.atan2((nLng - lng) * kx, (nLat - lat) * ky) * 180) / Math.PI;
+  return { lat, lng, rotationDeg, metresPerUnit: fit.metresPerUnit };
 }
 
 /**

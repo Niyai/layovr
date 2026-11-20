@@ -18,7 +18,7 @@ import { notify } from "../lib/events";
 import type { PaymentGateway } from "../lib/flutterwave";
 import { persistImage } from "../lib/images";
 import type { Ctx, StaffRow } from "../context";
-import { clearRunnerLocation } from "./location";
+import { clearBuyerLocation, clearRunnerLocation } from "./location";
 import { loadOrders, toVenue } from "./mappers";
 
 /* ------------------------------------------------------------ status rules */
@@ -60,8 +60,9 @@ async function transition(
     [order.venue_id, order.id, from, to, actor, note ?? null],
   );
   order.status = to;
-  if (order.runner_id && ["delivered", "not_delivered", "cancelled"].includes(to)) {
-    await clearRunnerLocation(q, order.runner_id);
+  if (["delivered", "not_delivered", "cancelled"].includes(to)) {
+    if (order.runner_id) await clearRunnerLocation(q, order.runner_id);
+    await clearBuyerLocation(q, order.id);
   }
 }
 
@@ -342,7 +343,7 @@ export async function assignRunner(
     if (staff.role === "runner" && (runnerId !== staff.id || order.status !== "paid")) {
       throw forbidden();
     }
-    if (staff.role === "capture") throw forbidden();
+    if (staff.role === "capture" || staff.role === "vendor") throw forbidden();
 
     const [runner] = await q.query(
       "select * from staff where id = $1 and venue_id = $2 and role = 'runner'",

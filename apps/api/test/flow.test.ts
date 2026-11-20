@@ -1,4 +1,4 @@
-import { checkPlan, fitGeo, moonshotPlan, nearestSpot, type Order, type Snapshot } from "@layovr/shared";
+import { checkPlan, distanceM, fitGeo, geoPointsFor, moonshotPlan, nearestSpot, placementOf, type Order, type Snapshot } from "@layovr/shared";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { openDb, type Db } from "../src/db/client";
@@ -509,5 +509,87 @@ describe("runner live location", () => {
     const venue = (await call<Snapshot>(demoApp, "GET", "/snapshot")).json.venues.find((v) => v.code === "MOONSHOT")!;
     expect(venue.plan?.canvas.geo).toMatchObject({ approximate: false });
     expect((await call(demoApp, "PATCH", "/admin/plan/geo", { points: [] }, await login("2222"))).status).toBe(400);
+  });
+});
+
+describe("buyer and mobile vendor live location", () => {
+  it("shares the buyer's position with their runner and dispatch only, and forgets it when the order closes", async () => {
+    const fix = { lat: 6.4766, lng: 3.3694, accuracyM: 12 };
+    expect((await call(demoApp, "POST", "/orders/ord_missing/location", fix)).status).toBe(404);
+
+    const { order } = await placeOrder();
+    const paid = await call<Order>(demoApp, "POST", `/orders/${order.id}/demo-pay`);
+    // No runner yet: nothing stored.
+    expect((await call<{ sharing: boolean }>(demoApp, "POST", `/orders/${order.id}/location`, fix)).json.sharing).toBe(false);
+
+    const kemi = await login("3333");
+    const dispatch = await login("2222");
+    await call(demoApp, "POST", `/orders/${order.id}/assign`, { runnerId: "st_kemi", etaMinutes: 5 }, dispatch);
+    expect((await call<{ sharing: boolean }>(demoApp, "POST", `/orders/${order.id}/location`, fix)).json.sharing).toBe(true);
+
+    const runnerView = (await call<Snapshot>(demoApp, "GET", "/snapshot", undefined, kemi)).json;
+    const pos = runnerView.buyerPositions.find((p) => p.orderId === order.id)!;
+    const [ex, ey] = fitGeo(moonshotPlan.canvas.geo!.points)!.toCanvas(fix.lat, fix.lng);
+    expect(pos.x).toBeCloseTo(ex, 3);
+    expect(pos.y).toBeCloseTo(ey, 3);
+    expect(pos.accuracyM).toBe(12);
+    expect((await call<Snapshot>(demoApp, "GET", "/snapshot", undefined, dispatch)).json.buyerPositions).toHaveLength(1);
+
+    // Another runner, the buyer's own view and the public never get it.
+    expect((await call<Snapshot>(demoApp, "GET", "/snapshot", undefined, await login("4444"))).json.buyerPositions).toEqual([]);
+    const buyerView = (await call<Snapshot>(demoApp, "GET", `/snapshot?orders=${order.id}`)).json;
+    expect(buyerView.buyerPositions).toEqual([]);
+    expect(JSON.stringify(buyerView)).not.toContain("6.4766");
+
+    // Stop sharing, then share again and close the order.
+    await call(demoApp, "DELETE", `/orders/${order.id}/location`);
+    expect((await call<Snapshot>(demoApp, "GET", "/snapshot", undefined, kemi)).json.buyerPositions).toEqual([]);
+    await call(demoApp, "POST", `/orders/${order.id}/location`, fix);
+    for (const st of order.stops) {
+      await call(demoApp, "POST", `/orders/${order.id}/purchases`, { stopId: st.id, amountKobo: 100_000, method: "cash" }, kemi);
+    }
+    await call(demoApp, "POST", `/orders/${order.id}/on-the-way`, {}, kemi);
+    await call(demoApp, "POST", `/orders/${order.id}/deliver`, { pin: paid.json.handoffPin }, kemi);
+    expect((await call<Snapshot>(demoApp, "GET", "/snapshot", undefined, dispatch)).json.buyerPositions).toEqual([]);
+    expect((await call<{ sharing: boolean }>(demoApp, "POST", `/orders/${order.id}/location`, fix)).json.sharing).toBe(false);
+  });
+
+  it("shows open mobile vendors to everyone, as plan points only, while fresh and accurate", async () => {
+    const musa = await login("7777"); // vendor staff for Zobo & Co, a mobile cart
+    const fix = { lat: 6.4766, lng: 3.3694, accuracyM: 20 };
+    expect((await call(demoApp, "POST", "/vendor/location", fix, await login("3333"))).status).toBe(403);
+    expect((await call<{ sharing: boolean }>(demoApp, "POST", "/vendor/location", fix, musa)).json.sharing).toBe(true);
+
+    const pub = (await call<Snapshot>(demoApp, "GET", "/snapshot")).json;
+    expect(pub.vendorPositions).toHaveLength(1);
+    expect(pub.vendorPositions[0]).toMatchObject({ vendorId: "vd_zobo" });
+    expect(pub.vendors.find((v) => v.id === "vd_zobo")?.mobile).toBe(true);
+    expect(JSON.stringify(pub)).not.toContain("6.4766");
+    // Vendor staff aren't listed to buyers.
+    expect(pub.staff.some((s) => s.role === "vendor")).toBe(false);
+
+    // A poor fix is kept off the public map.
+    await call(demoApp, "POST", "/vendor/location", { ...fix, accuracyM: 400 }, musa);
+    expect((await call<Snapshot>(demoApp, "GET", "/snapshot")).json.vendorPositions).toEqual([]);
+
+    // Closed: nothing stored.
+    await db.query("update vendors set is_open = false where id = 'vd_zobo'");
+    expect((await call<{ sharing: boolean }>(demoApp, "POST", "/vendor/location", fix, musa)).json.sharing).toBe(false);
+    expect((await db.query("select 1 from vendor_locations")).length).toBe(0);
+  });
+
+  it("places a plan on the map by centre, turn and scale, and reads them back", () => {
+    const canvas = { width: 120, height: 80 };
+    const place = { lat: 6.4278, lng: 3.4447, rotationDeg: 30, metresPerUnit: 0.5 };
+    const fit = fitGeo(geoPointsFor(canvas, place))!;
+    const [lat, lng] = fit.toGeo(60, 40);
+    expect(distanceM(lat, lng, place.lat, place.lng)).toBeLessThan(0.5);
+    // The plan's width really is 60 m on the ground.
+    const [aLat, aLng] = fit.toGeo(0, 40);
+    const [bLat, bLng] = fit.toGeo(120, 40);
+    expect(distanceM(aLat, aLng, bLat, bLng)).toBeCloseTo(60, 0);
+    const back = placementOf(canvas, fit);
+    expect(back.rotationDeg).toBeCloseTo(30, 1);
+    expect(back.metresPerUnit).toBeCloseTo(0.5, 3);
   });
 });

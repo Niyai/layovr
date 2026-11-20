@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { distanceM } from "@layovr/shared";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { SignalChip, SignalScreen, useSignalPrompt } from "@/components/MatchSignal";
+import { FloorPlan } from "@/components/FloorPlan";
 import { LocateBadge } from "@/components/LocateBadge";
+import { StreetMapButton } from "@/components/VenueMap";
 import { RequireStaff } from "@/components/RequireStaff";
 import { Field, Money, StatusChip } from "@/components/ui-bits";
 import {
@@ -21,7 +22,9 @@ import {
   startBuying,
   useDB,
 } from "@/lib/store";
-import type { DB, Order, OrderStop, Staff } from "@/lib/types";
+import type { DB, Order, OrderStop, Snapshot, Staff } from "@/lib/types";
+import { buyerDots, vendorDots } from "@/lib/liveDots";
+import { useLiveLocation } from "@/lib/useLiveLocation";
 import { cn, compressImage, minutesFromNow } from "@/lib/utils";
 
 export const Route = createFileRoute("/runner")({
@@ -56,7 +59,7 @@ function RunnerHome({ me }: { me: Staff }) {
   );
   const f = runnerFloat(d, runner);
   // Only the runner's own phone shares location, and only while they have an order.
-  const locationStatus = useRunnerLocation(me.role === "runner" && runner.id === me.id && mine.length > 0);
+  const locationStatus = useLiveLocation(me.role === "runner" && runner.id === me.id && mine.length > 0, shareRunnerLocation);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-6">
@@ -145,40 +148,6 @@ function RunnerHome({ me }: { me: Staff }) {
   );
 }
 
-/**
- * Sends the phone's position while enabled: at most every 15 s unless the
- * runner has moved 25 m or more. Stops (and the server forgets) when disabled.
- */
-function useRunnerLocation(enabled: boolean) {
-  const [status, setStatus] = useState<"off" | "on" | "denied" | "unavailable">("off");
-  useEffect(() => {
-    if (!enabled) {
-      setStatus("off");
-      return;
-    }
-    if (!("geolocation" in navigator)) {
-      setStatus("unavailable");
-      return;
-    }
-    let last: { t: number; lat: number; lng: number } | null = null;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-        const now = Date.now();
-        if (last && now - last.t < 15_000 && distanceM(last.lat, last.lng, lat, lng) < 25) return;
-        last = { t: now, lat, lng };
-        void shareRunnerLocation({ lat, lng, accuracyM: accuracy }).then((ok) =>
-          setStatus(ok ? "on" : "off"),
-        );
-      },
-      (err) => setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "unavailable"),
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 30_000 },
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, [enabled]);
-  return status;
-}
-
 function Mini({
   label,
   value,
@@ -198,7 +167,7 @@ function Mini({
   );
 }
 
-function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
+function RunnerOrder({ o, d, runner }: { o: Order; d: Snapshot; runner: Staff }) {
   const spot = d.spots.find((s) => s.id === o.spotId);
   const eta = minutesFromNow(o.etaAt);
   const [pin, setPin] = useState("");
@@ -245,6 +214,7 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
               🧭 {spot.directions}
             </p>
           )}
+          <BuyerOnMap o={o} d={d} />
           <a
             href={`tel:${o.customerPhone}`}
             className="btn btn-sm mt-3 bg-card"
@@ -347,6 +317,48 @@ function RunnerOrder({ o, d, runner }: { o: Order; d: DB; runner: Staff }) {
         </li>
       </ol>
     </article>
+  );
+}
+
+/** Where the buyer is: their spot, the point they tapped, and their live position if they shared it. */
+function BuyerOnMap({ o, d }: { o: Order; d: Snapshot }) {
+  const [open, setOpen] = useState(false);
+  const venue = d.venues.find((v) => v.id === o.venueId);
+  const live = d.buyerPositions.find((p) => p.orderId === o.id);
+  const ago = live ? Math.max(0, Math.round((Date.now() - new Date(live.updatedAt).getTime()) / 1000)) : null;
+  if (!venue) return null;
+  const dots = buyerDots(d, [o.id]);
+  return (
+    <div className="mt-2 grid gap-2">
+      {live && ago !== null && (
+        <p className="text-sm font-bold">
+          🙋 {o.customerName.split(" ")[0]} is sharing their live location
+          <span className="font-normal text-muted-foreground">
+            {" "}
+            · ±{live.accuracyM} m · {ago < 60 ? `${ago}s` : `${Math.round(ago / 60)} min`} ago
+          </span>
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-sm bg-card" onClick={() => setOpen((x) => !x)}>
+          {open ? "Hide map" : "🗺️ Show on the plan"}
+        </button>
+        <StreetMapButton venue={venue} d={d} focusOrderId={o.id} />
+      </div>
+      {open && (
+        <FloorPlan
+          venue={venue}
+          zones={d.zones.filter((z) => z.venueId === venue.id)}
+          spots={d.spots.filter((s) => s.venueId === venue.id && s.active)}
+          highlightSpotId={o.spotId}
+          {...(o.pinpoint?.x !== undefined && o.pinpoint.y !== undefined
+            ? { pin: { x: o.pinpoint.x, y: o.pinpoint.y, ...(o.pinpoint.level === undefined ? {} : { level: o.pinpoint.level }) } }
+            : {})}
+          dots={[...dots, ...vendorDots(d, venue.id)]}
+          caption={<span className="text-xs font-bold">📍 drop-off spot · 🙋 buyer live</span>}
+        />
+      )}
+    </div>
   );
 }
 

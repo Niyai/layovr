@@ -36,6 +36,12 @@ Staff sign in at `/staff` with the event code **MOONSHOT** and a PIN:
 | 4444 | Bayo  | runner            | /runner         |
 | 5555 | Chidi | runner (🔑 access) | /runner         |
 | 6666 | Ife   | capture           | /admin/capture  |
+| 7777 | Musa  | vendor (Zobo cart) | /stall         |
+
+Seated events: open `/seat?event=MOONSHOT` and type a demo ticket: **MOON-0001**
+(Ada, Block C, in the "Moonshot crew" friend group with MOON-0002 and MOON-0003, whose
+seat change waits on `/seats`) or **MOON-0004**. About 240 more test tickets are numbered
+`MS-100001` onwards. Admin (1111) and dispatch (2222) handle requests at `/seats`.
 
 Partner dashboard (`/dashboard/login`, local demo accounts, password `layovr-demo`):
 `planner@demo.layovr.app` (owns MOONSHOT) and `ops@demo.layovr.app` (Layovr operator).

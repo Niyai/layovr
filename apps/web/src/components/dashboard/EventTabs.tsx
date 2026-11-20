@@ -6,6 +6,7 @@ import { FloorPlan } from "@/components/FloorPlan";
 import { useGpsCalibration } from "@/components/GpsCalibration";
 import { PlaceSearch, type PickedPlace } from "@/components/PlaceSearch";
 import { PlanEditor } from "@/components/PlanEditor";
+import { PlaceOnMap } from "./PlaceOnMap";
 import { QrImage } from "@/components/QrImage";
 import { Field, Money } from "@/components/ui-bits";
 import {
@@ -174,6 +175,8 @@ function PlanTabLoaded({ event, plan }: { event: EventDetail; plan: VenuePlan })
     <div className="grid gap-6">
       <PlanEditor key={JSON.stringify(plan).length} initial={plan} tracingUrl={event.floorPlanUrl} onSave={save} />
 
+      <PlaceOnMap event={event} plan={plan} />
+
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="card-pop grid h-fit gap-2 bg-card p-5">
           <h3 className="font-display text-lg font-bold">Tracing image</h3>
@@ -267,7 +270,7 @@ const blankItem = { name: "", price: "", category: "Menu", service: false };
 
 export function VendorsTab({ event, plan }: { event: EventDetail; plan: VenuePlan | undefined }) {
   const vendors = useVendors(event.id);
-  const [form, setForm] = useState({ name: "", category: "Food & drink", emoji: "🍽️", zoneCode: "", stallLabel: "", contactName: "", contactPhone: "" });
+  const [form, setForm] = useState({ name: "", category: "Food & drink", emoji: "🍽️", zoneCode: "", stallLabel: "", contactName: "", contactPhone: "", mobile: false });
   const [open, setOpen] = useState<string | null>(null);
   const areas = plan?.areas ?? [];
   const zoneIdFor = (code: string) => `z_${event.id.replace(/^v_/, "")}_${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
@@ -280,12 +283,13 @@ export function VendorsTab({ event, plan }: { event: EventDetail; plan: VenuePla
           category: form.category,
           emoji: form.emoji || "🍽️",
           stallLabel: form.stallLabel.trim(),
+          mobile: form.mobile,
           ...(form.zoneCode ? { zoneId: zoneIdFor(form.zoneCode) } : {}),
           ...(form.contactName.trim() ? { contactName: form.contactName.trim() } : {}),
           ...(form.contactPhone.trim() ? { contactPhone: form.contactPhone.trim() } : {}),
         },
       });
-      setForm({ ...form, name: "", stallLabel: "", contactName: "", contactPhone: "" });
+      setForm({ ...form, name: "", stallLabel: "", contactName: "", contactPhone: "", mobile: false });
       setOpen(v.id);
       await refresh(["events", event.id]);
       toast.success(`${v.name} added`);
@@ -342,6 +346,13 @@ export function VendorsTab({ event, plan }: { event: EventDetail; plan: VenuePla
             <input className="field py-1.5" type="tel" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
           </Field>
         </div>
+        <label className="flex items-start gap-2 text-sm font-bold">
+          <input type="checkbox" className="mt-0.5 h-5 w-5" checked={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.checked })} />
+          <span>
+            🛒 Mobile cart or hawker
+            <span className="block text-xs font-normal">Moves around the venue. Add them as vendor staff (Staff tab) so they can share where they are.</span>
+          </span>
+        </label>
         <button type="submit" className="btn bg-coral" disabled={!form.name.trim()}>
           Add vendor
         </button>
@@ -382,6 +393,7 @@ function VendorCard({
             {v.products.length} item{v.products.length === 1 ? "" : "s"} · {area?.name ?? "area not set"}
             {v.stallLabel ? ` · ${v.stallLabel}` : ""}
             {v.contactPhone ? ` · ${v.contactPhone}` : ""}
+            {v.mobile ? " · 🛒 mobile" : ""}
           </span>
         </button>
         <div className="flex flex-wrap items-center gap-2">
@@ -396,6 +408,18 @@ function VendorCard({
               }}
             />
             Open
+          </label>
+          <label className="flex items-center gap-1 text-sm font-bold" title="A cart or hawker that moves around">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={v.mobile}
+              onChange={async (e) => {
+                await papi(base, { method: "PATCH", body: { mobile: e.target.checked } }).catch(err);
+                await after();
+              }}
+            />
+            🛒 Mobile
           </label>
           <button
             type="button"
@@ -520,11 +544,13 @@ const ROLES: { role: StaffRole; label: string; help: string }[] = [
   { role: "dispatch", label: "Dispatch", help: "Runs the ops board" },
   { role: "admin", label: "On-site admin", help: "Spots, menus, fees" },
   { role: "capture", label: "Menu capture", help: "Records stalls on a phone" },
+  { role: "vendor", label: "Vendor staff", help: "Shares a mobile cart's location" },
 ];
 
 export function StaffTab({ event }: { event: EventDetail }) {
   const staff = useStaff(event.id);
-  const [form, setForm] = useState({ name: "", role: "runner" as StaffRole, phone: "", restricted: false, float: "" });
+  const vendors = useVendors(event.id);
+  const [form, setForm] = useState({ name: "", role: "runner" as StaffRole, phone: "", restricted: false, float: "", vendorId: "" });
   const [issued, setIssued] = useState<{ member: TeamMember; pin: string } | null>(null);
   const shareText = (m: TeamMember, pin: string) =>
     `Hi ${m.name}, you're ${m.role === "runner" ? "a runner" : `on ${m.role}`} for ${event.name} on Layovr. Open ${window.location.origin}/staff and sign in with event code ${event.code} and PIN ${pin}. Keep the PIN private.`;
@@ -551,7 +577,10 @@ export function StaffTab({ event }: { event: EventDetail }) {
                   {m.providedBy === "layovr" && <span className="chip ml-1 bg-lilac px-1.5 py-0 text-[10px]">Layovr</span>}
                   <span className="block text-xs text-muted-foreground">{m.phone}</span>
                 </td>
-                <td className="p-3">{ROLES.find((r) => r.role === m.role)?.label}</td>
+                <td className="p-3">
+                  {ROLES.find((r) => r.role === m.role)?.label}
+                  {m.vendorId && <span className="block text-xs text-muted-foreground">{vendors.data?.find((v) => v.id === m.vendorId)?.name}</span>}
+                </td>
                 <td className="p-3">{m.role === "runner" ? formatNaira(m.floatKobo) : "—"}</td>
                 <td className="p-3">
                   <input
@@ -634,6 +663,7 @@ export function StaffTab({ event }: { event: EventDetail }) {
                   phone: form.phone.trim(),
                   canEnterRestricted: form.restricted,
                   floatKobo: Math.round(Number(form.float || 0) * 100),
+                  ...(form.role === "vendor" && form.vendorId ? { vendorId: form.vendorId } : {}),
                 },
               });
               setIssued(r);
@@ -664,6 +694,19 @@ export function StaffTab({ event }: { event: EventDetail }) {
           <Field label="Phone" hint="For WhatsApp sign-in details and buyer calls">
             <input className="field py-1.5" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </Field>
+          {form.role === "vendor" && (
+            <Field label="Works for" hint="Mark the vendor as a mobile cart in the Vendors tab">
+              <select className="field py-1.5" value={form.vendorId} onChange={(e) => setForm({ ...form, vendorId: e.target.value })} required>
+                <option value="">Pick a vendor</option>
+                {vendors.data?.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.emoji} {v.name}
+                    {v.mobile ? " (mobile)" : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
           {form.role === "runner" && (
             <>
               <Field label="Float (₦)" hint="Cash or transfer budget for buying at stalls">

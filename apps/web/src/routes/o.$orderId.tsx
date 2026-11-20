@@ -6,9 +6,12 @@ import {
   STATUS_LABEL,
   formatNaira,
   rememberOrder,
+  shareBuyerLocation,
+  stopBuyerLocation,
   useDB,
   useHydrated,
 } from "@/lib/store";
+import { useLiveLocation } from "@/lib/useLiveLocation";
 import type { Order, OrderStatus } from "@/lib/types";
 import { clockTime, cn, minutesFromNow } from "@/lib/utils";
 
@@ -129,6 +132,10 @@ function OrderPage() {
         <p className="mt-1 font-semibold">
           📡 {runner?.name ?? "Your runner"} is about {order.runnerDistanceM} m away
         </p>
+      )}
+
+      {["assigned", "buying", "on_the_way"].includes(order.status) && venue?.plan?.canvas.geo && (
+        <ShareMyLocation order={order} />
       )}
 
       {order.status === "awaiting_payment" && (
@@ -292,5 +299,55 @@ function OrderPage() {
         updates on its own.
       </p>
     </Section>
+  );
+}
+
+/**
+ * Opt-in: send this phone's position so the runner can walk straight to the
+ * buyer. Off by default; stops by itself when the order closes.
+ */
+function ShareMyLocation({ order }: { order: Order }) {
+  const key = `layovr:share:${order.id}`;
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(key) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const status = useLiveLocation(on, (fix) =>
+    shareBuyerLocation(order.id, { ...fix, ...(order.pinpoint?.level === undefined ? {} : { level: order.pinpoint.level }) }),
+  );
+  const toggle = () => {
+    const next = !on;
+    setOn(next);
+    try {
+      localStorage.setItem(key, next ? "1" : "0");
+    } catch {
+      /* not remembered in private mode */
+    }
+    if (!next) void stopBuyerLocation(order.id);
+  };
+  return (
+    <div className="mt-4 grid gap-2 rounded-2xl border-2 border-ink bg-card p-4">
+      <label className="flex items-start gap-3">
+        <input type="checkbox" className="mt-1 size-5" checked={on} onChange={toggle} />
+        <span>
+          <b>Share my live location so my runner can find me</b>
+          <span className="block text-sm text-muted-foreground">
+            Only your runner and the event's dispatch team see it, and it's deleted when your order is done.
+          </span>
+        </span>
+      </label>
+      {on && status !== "off" && (
+        <p role="status" className={cn("text-sm font-semibold", status !== "on" && "text-destructive")}>
+          {status === "on"
+            ? "📡 Sharing. Keep this page open."
+            : status === "denied"
+              ? "📡 Location is blocked. Allow it in your browser settings."
+              : "📡 Can't get your location right now"}
+        </p>
+      )}
+    </div>
   );
 }

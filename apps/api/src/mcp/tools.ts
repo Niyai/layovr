@@ -1,10 +1,11 @@
-import { VENUE_LIBRARY, checkPlan, type VenuePlan } from "@layovr/shared";
+import { VENUE_LIBRARY, checkPlan, parseTicketCsv, ticketInputSchema, type VenuePlan } from "@layovr/shared";
 import { z } from "zod";
 import type { Ctx, PartnerAuth, Scope } from "../context";
 import * as events from "../services/events";
 import * as plans from "../services/plans";
+import * as seating from "../services/seating";
 import * as team from "../services/team";
-import { clean, partnerSchemas } from "../schemas";
+import { clean, partnerSchemas, schemas } from "../schemas";
 
 /**
  * MCP tools. Each one wraps the same service functions as the REST API, so an
@@ -336,7 +337,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "vendors_upsert",
     title: "Add or edit a vendor",
-    description: "Add a vendor (leave vendorId out) or edit one. zoneId comes from the plan's areas (events_get / plans_get).",
+    description: "Add a vendor (leave vendorId out) or edit one. zoneId comes from the plan's areas (events_get / plans_get). Set mobile: true for carts and hawkers that move around; their vendor staff can then share a live position buyers see.",
     write: true,
     input: { eventId, vendorId: z.string().optional(), vendor: partnerSchemas.vendor.partial(), confirm },
     run: async (ctx, auth, a) => {
@@ -384,7 +385,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "staff_add",
     title: "Add a team member",
-    description: "Add a runner, dispatcher, on-site admin or menu capture person. Returns a 6-digit PIN once; they sign in at /staff with the event code + PIN.",
+    description: "Add a runner, dispatcher, on-site admin, menu capture person, or vendor staff (role vendor + vendorId, for someone at a mobile cart who shares its position). Returns a 6-digit PIN once; they sign in at /staff with the event code + PIN.",
     write: true,
     input: { eventId, staff: partnerSchemas.staff, confirm },
     run: async (ctx, auth, a) => {
@@ -394,6 +395,68 @@ export const TOOLS: ToolDef[] = [
       events.requireWrite(auth);
       const { member, pin } = await team.addStaff(ctx, v.id, input, auth.role === "operator" ? "layovr" : "partner");
       return { member, pin, signIn: `Event code ${v.code} + PIN ${pin} at ${ctx.env.publicAppUrl}/staff`, note: "Share the PIN privately; it isn't shown again." };
+    },
+  },
+  {
+    name: "tickets_import",
+    title: "Import tickets with seats",
+    description:
+      "Load tickets from the organiser's ticketing system so guests can find their seat: a CSV export (ticket_number, barcode, name, section, row, seat, ticket_type, checked_in, gate) or a JSON list. Matched by ticket number, so importing again updates seats. Seat blocks must exist in the plan's seating list.",
+    write: true,
+    input: {
+      eventId,
+      csv: z.string().optional().describe("CSV export with a header row"),
+      tickets: z.array(ticketInputSchema).optional().describe("Or the tickets as JSON"),
+      replace: z.boolean().optional().describe("Remove tickets that aren't in this import"),
+      confirm,
+    },
+    run: async (ctx, auth, a) => {
+      const v = await own(ctx, auth, a.eventId);
+      const parsed = typeof a.csv === "string" ? parseTicketCsv(a.csv) : { tickets: z.array(ticketInputSchema).parse(a.tickets ?? []).map(clean), errors: [] as string[] };
+      if (parsed.errors.length) return { ok: false, errors: parsed.errors };
+      const res = await seating.importTickets(ctx, v.id, parsed.tickets, { dryRun: !a.confirm, replace: Boolean(a.replace) });
+      if (!a.confirm) return preview(`Import ${res.total} tickets to "${v.name}" (${res.added} new, ${res.updated} updated${res.removed ? `, ${res.removed} removed` : ""})`, { ok: res.ok, errors: res.errors, warnings: res.warnings.slice(0, 10) });
+      events.requireWrite(auth);
+      return res;
+    },
+  },
+  {
+    name: "tickets_checkin",
+    title: "Record a ticket check-in",
+    description: "Mark a ticket as checked in at a gate (by ticket number or barcode). The guest's seat directions then start from that gate.",
+    write: true,
+    input: { eventId, ...partnerSchemas.checkIn.shape, confirm },
+    run: async (ctx, auth, a) => {
+      const v = await own(ctx, auth, a.eventId);
+      const input = clean(partnerSchemas.checkIn.parse(a));
+      if (!a.confirm) return preview(`Check in ticket ${input.ticket}${input.gate ? ` at ${input.gate}` : ""}`);
+      events.requireWrite(auth);
+      return seating.checkIn(ctx, v.id, input);
+    },
+  },
+  {
+    name: "seat_requests_list",
+    title: "List seat change requests",
+    description: "Guests' requests to change seats (waiting first), with the guest's name, ticket, current seat, what they want and a suggested free seat.",
+    write: false,
+    input: { eventId },
+    run: async (ctx, auth, a) => seating.listRequests(ctx.db, (await own(ctx, auth, a.eventId)).id, { all: true }),
+  },
+  {
+    name: "seat_requests_decide",
+    title: "Approve or decline a seat change",
+    description: "Approve (moves the ticket to the seat given, or the seat the guest asked for) or decline with a note the guest sees. Check the suggestion from seat_requests_list first.",
+    write: true,
+    input: { eventId, requestId: z.string(), ...schemas.seatDecision.shape, confirm },
+    run: async (ctx, auth, a) => {
+      const v = await own(ctx, auth, a.eventId);
+      const input = clean(schemas.seatDecision.parse(a));
+      if (!a.confirm) {
+        const seat = input.block ? ` to ${input.block} ${input.row}${input.seat}` : "";
+        return preview(`${input.decision === "approve" ? `Approve${seat}` : "Decline"} seat request ${String(a.requestId)}`, input);
+      }
+      events.requireWrite(auth);
+      return seating.decideRequest(ctx, scopeFor(auth, v.id), String(a.requestId), input);
     },
   },
   {

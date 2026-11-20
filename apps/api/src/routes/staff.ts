@@ -104,6 +104,23 @@ export function staffRoutes(r: Router, ctx: Ctx) {
   });
 
   r.post(
+    "/vendor/location",
+    {
+      tag: "Dispatch & runners",
+      summary: "Vendor staff phone reports where a mobile cart is",
+      description: "Stored only while the vendor is mobile and open. Buyers see fresh positions on the event map.",
+      access: "staff",
+      body: schemas.location,
+      returns: "{ sharing }",
+    },
+    async (c) => {
+      const staff = requireStaff(c, "vendor");
+      limit(`vloc:${staff.id}`, 30, 60_000);
+      return c.json(await location.reportVendorLocation(ctx, staff, await body(c, schemas.location)));
+    },
+  );
+
+  r.post(
     "/runner/location",
     { tag: "Dispatch & runners", summary: "Runner phone reports its position (only while on an order)", access: "staff", body: schemas.location, returns: "{ sharing }" },
     async (c) => {

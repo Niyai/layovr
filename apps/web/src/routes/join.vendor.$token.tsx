@@ -64,6 +64,7 @@ function Form({ token, invite, onDone }: { token: string; invite: Invite; onDone
     contactName: v.contactName ?? "",
     contactPhone: v.contactPhone ?? "",
   });
+  const [mobile, setMobile] = useState(v.mobile);
   const [rows, setRows] = useState<Row[]>([newRow(), newRow(), newRow()]);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
@@ -90,6 +91,7 @@ function Form({ token, invite, onDone }: { token: string; invite: Invite; onDone
                   category: form.category.trim() || "Food & drink",
                   description: form.description.trim(),
                   stallLabel: form.stallLabel.trim(),
+                  mobile,
                   ...(form.zoneId ? { zoneId: form.zoneId } : {}),
                   ...(form.contactName.trim() ? { contactName: form.contactName.trim() } : {}),
                   ...(form.contactPhone.trim() ? { contactPhone: form.contactPhone.trim() } : {}),
@@ -139,6 +141,13 @@ function Form({ token, invite, onDone }: { token: string; invite: Invite; onDone
           <Field label="Where exactly" hint="So runners can find you">
             <input className="field" value={form.stallLabel} onChange={set("stallLabel")} placeholder="Food village, second row, blue tent" required />
           </Field>
+          <label className="flex items-start gap-2 text-sm font-bold">
+            <input type="checkbox" className="mt-0.5 h-5 w-5" checked={mobile} onChange={(e) => setMobile(e.target.checked)} />
+            <span>
+              🛒 We move around (cart or hawker)
+              <span className="block text-xs font-normal">The organiser can then give you a sign-in to show buyers where you are.</span>
+            </span>
+          </label>
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Contact name">
               <input className="field" value={form.contactName} onChange={set("contactName")} />

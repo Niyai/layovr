@@ -22,6 +22,9 @@ See README.md for how the pieces connect.
 - IMPORTANT: orders are marked paid only after Flutterwave verify succeeds (or demo mode with no FLW key).
 - Every table has venue_id; staff actions are scoped to the staff member's venue and role in the API.
 - Public responses never include PINs, pin_hash, staff phones or other buyers' orders. Staff views never include handoff_pin.
+- Live positions: buyer positions go only to that order's runner and dispatch/admin; runner positions to dispatch/admin (buyers get distance only); mobile vendor positions are public as plan points. Latest position only, never history.
+- Tickets: guests reach a ticket only by its unguessable id (looked up by number/barcode, rate-limited). Friend groups get first names and blocks; exact seats only if that friend shares them. Holder names and ticket numbers go to organisers and admin/dispatch only.
+- Google Maps is browser-only (apps/web/src/lib/google.ts); maps load on a tap because Google bills each map shown.
 - Pages use hooks/actions from apps/web/src/lib/store.ts only; don't fetch the API directly from pages.
 - apps/web/vite.config.ts uses @lovable.dev/vite-tanstack-config: don't add plugins it already includes.
 - Venue maps follow docs/PLAN-STANDARD.md; packages/shared/src/plan.ts (planSchema + checkPlan) is the source of truth.

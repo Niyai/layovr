@@ -17,6 +17,8 @@ import {
   useDB,
   vendorWait,
 } from "@/lib/store";
+import { buyerDots, runnerDots, vendorDots } from "@/lib/liveDots";
+import { StreetMapButton } from "@/components/VenueMap";
 import type { DB, Order, Staff } from "@/lib/types";
 import { cn, minutesFromNow, timeAgo } from "@/lib/utils";
 
@@ -117,13 +119,8 @@ function OpsBoard({ me }: { me: Staff }) {
         ]
       : [];
   });
-  // Runners on an order, where the plan is linked to GPS. Fixes older than 2 min are hidden.
-  for (const p of d.runnerPositions) {
-    const r = d.staff.find((s) => s.id === p.runnerId);
-    if (p.x === undefined || p.y === undefined || !r) continue;
-    if (Date.now() - new Date(p.updatedAt).getTime() > 120_000) continue;
-    dots.push({ id: `r_${p.runnerId}`, x: p.x, y: p.y, icon: "🛵", label: r.name, className: "" });
-  }
+  // Live positions where the plan is linked to GPS: runners, buyers who shared, mobile vendors.
+  dots.push(...runnerDots(d), ...buyerDots(d), ...vendorDots(d, venue.id));
   const delivered = orders.filter((o) => o.status === "delivered");
   const revenueFee = delivered.reduce((s, o) => s + o.feeKobo, 0);
 
@@ -201,9 +198,14 @@ function OpsBoard({ me }: { me: Staff }) {
                 <Legend c="bg-blush" t="Buying" />
                 <Legend c="bg-coral" t="On the way" />
                 <span>🛵 runner</span>
+                <span>🙋 buyer (shared)</span>
+                <span>🧃 mobile vendor (its emoji)</span>
               </span>
             }
           />
+          <div className="flex flex-wrap gap-2">
+            <StreetMapButton venue={venue} d={d} />
+          </div>
 
           <section className="card-pop bg-card p-4">
             <h2 className="font-display text-lg font-bold">Runners & floats</h2>

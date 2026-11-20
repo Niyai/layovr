@@ -8,6 +8,7 @@ import { bad, notFound } from "../lib/errors";
 import { onChange } from "../lib/events";
 import { limit } from "../lib/ratelimit";
 import { searchPlaces } from "../services/geo";
+import * as location from "../services/location";
 import * as orders from "../services/orders";
 import { buildSnapshot } from "../services/snapshot";
 import * as team from "../services/team";
@@ -25,18 +26,22 @@ export function publicRoutes(r: Router, ctx: Ctx) {
       tag: "Buyer app",
       summary: "Everything one screen may see",
       description:
-        "Live venues, their plans, vendors and menus, plus the caller's own orders. Staff sessions also get the orders and purchases their role may see.",
+        "Live venues, their plans, vendors and menus, plus the caller's own orders and tickets. Staff sessions also get the orders, purchases and seat requests their role may see.",
       access: "public",
-      query: z.object({ orders: z.string().optional().describe("Comma-separated order ids saved on this phone") }),
+      query: z.object({
+        orders: z.string().optional().describe("Comma-separated order ids saved on this phone"),
+        tickets: z.string().optional().describe("Comma-separated ticket ids saved on this phone"),
+      }),
       returns: "Snapshot",
     },
     async (c) => {
-      const ids = (c.req.query("orders") ?? "")
-        .split(",")
-        .filter((x) => id.safeParse(x).success)
-        .slice(0, 30);
+      const list = (name: string, max: number) =>
+        (c.req.query(name) ?? "")
+          .split(",")
+          .filter((x) => id.safeParse(x).success)
+          .slice(0, max);
       c.header("Cache-Control", "no-store");
-      return c.json(await buildSnapshot(ctx, c.get("staff"), ids));
+      return c.json(await buildSnapshot(ctx, c.get("staff"), list("orders", 30), list("tickets", 10)));
     },
   );
 
@@ -173,6 +178,28 @@ export function publicRoutes(r: Router, ctx: Ctx) {
   r.post("/orders/:id/demo-pay", { tag: "Buyer app", summary: "Approve a demo payment (only when Flutterwave isn't configured)", access: "public", returns: "Order" }, async (c) =>
     c.json(await orders.demoPay(ctx, param(c, "id"))),
   );
+
+  r.post(
+    "/orders/:id/location",
+    {
+      tag: "Buyer app",
+      summary: "Share the buyer's live position with their runner",
+      description:
+        "Opt-in, while a runner is on the order. Only the latest position is kept; it goes to that order's runner and dispatch, and is deleted when the order closes.",
+      access: "public",
+      body: schemas.buyerLocation,
+      returns: "{ sharing }",
+    },
+    async (c) => {
+      const orderId = param(c, "id");
+      limit(`bloc:${orderId}`, 30, 60_000);
+      return c.json(await location.reportBuyerLocation(ctx, orderId, clean(await body(c, schemas.buyerLocation))));
+    },
+  );
+
+  r.delete("/orders/:id/location", { tag: "Buyer app", summary: "Stop sharing the buyer's position", access: "public", returns: "{ sharing }" }, async (c) => {
+    return c.json(await location.stopBuyerLocation(ctx, param(c, "id")));
+  });
 
   r.post(
     "/flw/webhook",

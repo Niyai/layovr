@@ -1,5 +1,6 @@
-import { makeSeed, type RunnerPosition, type Snapshot } from "@layovr/shared";
-import { runnerDistance, venueFit } from "./location";
+import { makeSeed, type BuyerPosition, type RunnerPosition, type Snapshot, type VendorPosition } from "@layovr/shared";
+import { runnerDistance, usable, venueFit } from "./location";
+import { guestTickets, listRequests } from "./seating";
 import type { Ctx, StaffRow } from "../context";
 import {
   loadOrders,
@@ -18,12 +19,17 @@ import {
  * - Everyone: venues, zones, active spots, vendors, products, runner first names, live stats.
  * - Buyers: their own orders (by the unguessable ids saved on their phone), with hand-off PIN.
  * - Dispatch/admin: every order and purchase at their venue (no PINs).
- * - Runners: orders assigned to them plus paid orders waiting for a runner.
+ * - Runners: orders assigned to them plus paid orders waiting for a runner, and
+ *   the shared position of buyers on their own active orders.
+ * - Everyone: open mobile vendors' fresh positions.
+ * - Guests: their own tickets (by the ids saved on their phone), with their friend group.
+ * - Admin/dispatch: seat change requests at their venue.
  */
 export async function buildSnapshot(
   ctx: Ctx,
   me: StaffRow | null,
   buyerOrderIds: string[],
+  ticketIds: string[] = [],
 ): Promise<Snapshot> {
   const q = ctx.db;
   const isAdmin = me?.role === "admin";
@@ -131,6 +137,41 @@ export async function buildSnapshot(
       updatedAt: new Date(l.updated_at).toISOString(),
     }));
   }
+  // A buyer's shared position goes to their runner and to dispatch, nobody else.
+  let buyerPositions: BuyerPosition[] = [];
+  if (me && (me.role === "admin" || me.role === "dispatch" || me.role === "runner")) {
+    const rows =
+      me.role === "runner"
+        ? await q.query(
+            `select b.* from buyer_locations b join orders o on o.id = b.order_id
+             where o.runner_id = $1 and o.status in ('assigned','buying','on_the_way')`,
+            [me.id],
+          )
+        : await q.query("select * from buyer_locations where venue_id = $1", [me.venue_id]);
+    buyerPositions = rows.map((l) => ({
+      orderId: l.order_id,
+      ...(l.x === null ? {} : { x: l.x, y: l.y }),
+      ...(l.level === null ? {} : { level: l.level }),
+      accuracyM: l.accuracy_m,
+      updatedAt: new Date(l.updated_at).toISOString(),
+    }));
+  }
+
+  // Mobile vendors are public traders who chose to share: fresh, accurate positions only.
+  const vendorPositions: VendorPosition[] = (
+    await q.query(
+      `select l.* from vendor_locations l join vendors v on v.id = l.vendor_id
+       where l.venue_id = any($1) and v.mobile and v.is_open and l.x is not null`,
+      [visible],
+    )
+  )
+    .filter(usable)
+    .map((l) => ({ vendorId: l.vendor_id, x: l.x, y: l.y, updatedAt: new Date(l.updated_at).toISOString() }));
+
+  const tickets = await guestTickets(q, ticketIds.slice(0, 10));
+  const seatRequests =
+    me && (me.role === "admin" || me.role === "dispatch") ? await listRequests(q, me.venue_id) : [];
+
   const mineIds = new Set(mine.map((o) => o.id));
   const forStaff = await loadOrders(
     q,
@@ -153,6 +194,10 @@ export async function buildSnapshot(
     },
     me: me ? toStaff(me) : null,
     runnerPositions,
+    buyerPositions,
+    vendorPositions,
+    tickets,
+    seatRequests,
     config: {
       paymentMode: ctx.gateway ? "flutterwave" : "demo",
       allowReset: ctx.env.allowReset && isAdmin,
