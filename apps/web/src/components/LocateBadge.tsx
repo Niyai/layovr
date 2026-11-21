@@ -10,6 +10,8 @@ export function LocateBadge({ pinpoint }: { pinpoint?: Pinpoint | undefined }) {
         ? "📌 Tapped this spot on the map"
         : pinpoint.method === "gps"
           ? `📡 Phone location, ±${pinpoint.accuracyM ?? "?"} m`
-          : "📋 Chose this spot from the list";
+          : pinpoint.method === "seat"
+            ? "🎟️ Their seat, from their ticket (see the note)"
+            : "📋 Chose this spot from the list";
   return <p className="text-xs font-semibold text-muted-foreground">{text}</p>;
 }

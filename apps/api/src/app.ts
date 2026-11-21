@@ -8,6 +8,7 @@ import { HttpError } from "./lib/errors";
 import { handleMcp, mcpInfo } from "./mcp/server";
 import { DOCS_HTML, buildOpenApi } from "./openapi";
 import { PARTNER_COOKIE, partnerRoutes } from "./routes/partner";
+import { seatingRoutes } from "./routes/seating";
 import { publicRoutes } from "./routes/public";
 import { staffRoutes } from "./routes/staff";
 import * as partners from "./services/partners";
@@ -51,6 +52,7 @@ export function createApp(ctx: Ctx): App {
   publicRoutes(r, ctx);
   staffRoutes(r, ctx);
   partnerRoutes(r, ctx);
+  seatingRoutes(r, ctx);
 
   /* ---------------------------------------------------------- MCP */
 

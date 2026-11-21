@@ -146,6 +146,7 @@ function CaptureForm({
     }
     const vendor: Vendor = {
       id: existing?.id ?? uid("vd"),
+      mobile: existing?.mobile ?? false,
       venueId: me.venueId,
       name: name.trim(),
       emoji,

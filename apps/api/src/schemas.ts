@@ -1,4 +1,4 @@
-import { shapeSchema } from "@layovr/shared";
+import { shapeSchema, ticketInputSchema } from "@layovr/shared";
 import type { Context } from "hono";
 import { z } from "zod";
 import { bad } from "./lib/errors";
@@ -32,7 +32,7 @@ export const schemas = {
       .max(40),
     pinpoint: z
       .object({
-        method: z.enum(["qr", "map", "gps", "list"]),
+        method: z.enum(["qr", "map", "gps", "list", "seat"]),
         x: z.number().finite().optional(),
         y: z.number().finite().optional(),
         level: z.number().int().optional(),
@@ -50,8 +50,37 @@ export const schemas = {
       .array(z.object({ x: z.number(), y: z.number(), lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }))
       .min(2)
       .max(8),
+    /** True when placed by eye on a satellite map rather than measured on site. */
+    approximate: z.boolean().default(false),
+  }),
+  buyerLocation: z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+    accuracyM: z.number().min(0).max(100_000),
+    level: z.number().int().min(-10).max(200).optional(),
   }),
   verify: z.object({ transactionId: z.string().min(1).max(40) }),
+  findTicket: z.object({
+    ticket: shortText(256).min(1).describe("Ticket number, or what the ticket's barcode/QR contains"),
+    event: shortText(24).optional().describe("Event code, if the same number could belong to more than one event"),
+  }),
+  seatRequest: z.object({
+    want: z.enum(["seat", "block", "friends"]).describe("seat = a specific seat; block = any seat in a block; friends = next to my friend group"),
+    block: shortText(12).optional(),
+    row: shortText(4).optional(),
+    seat: z.number().int().min(0).max(10_000).optional(),
+    note: shortText(300).optional(),
+  }),
+  shareSeat: z.object({ shareSeat: z.boolean().describe("Show my exact seat to my friend group") }),
+  groupCreate: z.object({ name: shortText(60).optional() }),
+  groupJoin: z.object({ code: shortText(12).min(4) }),
+  seatDecision: z.object({
+    decision: z.enum(["approve", "decline"]),
+    block: shortText(12).optional().describe("Seat to move them to (defaults to the seat they asked for)"),
+    row: shortText(4).optional(),
+    seat: z.number().int().min(0).max(10_000).optional(),
+    note: shortText(300).optional().describe("Shown to the guest"),
+  }),
   assign: z.object({ runnerId: id, etaMinutes: minutes }),
   eta: z.object({ etaMinutes: minutes }),
   purchase: z.object({
@@ -203,6 +232,10 @@ export const partnerSchemas = {
     floorPlanUrl: z.string().max(3_000_000).optional().describe("Tracing image as a data URL, or empty to remove"),
     deliveryMode: z.enum(["own_runners", "layovr_runners"]).optional(),
     status: z.enum(["draft", "live", "ended"]).optional().describe("live = published to buyers"),
+    seatChanges: z
+      .enum(["off", "review", "auto"])
+      .optional()
+      .describe("Guest seat change requests: off, review (you decide), or auto (approve free seats with the same ticket type)"),
   }),
   runnerRequest: z.object({
     runnersNeeded: z.number().int().min(1).max(500),
@@ -224,14 +257,16 @@ export const partnerSchemas = {
     fill: z.enum(["sun", "coral", "lilac", "mint", "blush", "card"]).default("card"),
     contactName: shortText(80).optional(),
     contactPhone: shortText(20).optional(),
+    mobile: z.boolean().default(false).describe("A cart or hawker that moves around and can share a live position"),
   }),
   product: schemas.product.omit({ id: true, vendorId: true, priceCheckedAt: true }).extend({
     priceCheckedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}/).optional(),
   }),
   staff: z.object({
     name: shortText(80).min(1),
-    role: z.enum(["admin", "dispatch", "runner", "capture"]),
+    role: z.enum(["admin", "dispatch", "runner", "capture", "vendor"]),
     phone: shortText(20).default(""),
+    vendorId: id.optional().describe("Required for vendor staff: the stall or cart they work for"),
     canEnterRestricted: z.boolean().default(false),
     floatKobo: kobo.default(0),
     onShift: z.boolean().default(true),
@@ -243,6 +278,16 @@ export const partnerSchemas = {
     floatKobo: kobo.optional(),
     onShift: z.boolean().optional(),
   }),
+  ticketImport: z.object({
+    csv: z.string().max(5_000_000).optional().describe("A ticket export with a header row: ticket_number, barcode, name, section (block), row, seat, ticket_type, checked_in, gate"),
+    tickets: z.array(ticketInputSchema).max(50_000).optional().describe("Or the tickets as JSON"),
+    replace: z.boolean().default(false).describe("Remove tickets that aren't in this import"),
+  }),
+  checkIn: z.object({
+    ticket: shortText(256).min(1).describe("Ticket number or barcode value"),
+    gate: shortText(80).optional().describe("Entrance it was scanned at, as labelled on the plan (e.g. 'Zone B entrance')"),
+  }),
+  testTickets: z.object({ share: z.number().min(0.05).max(1).default(0.6).describe("Share of free seats to fill") }),
   apiKey: z.object({
     name: shortText(80).min(1),
     scope: z.enum(["read", "write"]).default("write"),
@@ -259,6 +304,7 @@ export const partnerSchemas = {
       fill: z.enum(["sun", "coral", "lilac", "mint", "blush", "card"]).default("card"),
       contactName: shortText(80).optional(),
       contactPhone: shortText(20).optional(),
+      mobile: z.boolean().default(false),
     }),
     items: z
       .array(schemas.product.omit({ id: true, vendorId: true, priceCheckedAt: true }))

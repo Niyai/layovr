@@ -1,4 +1,4 @@
-import type { Product, StaffRole, Vendor, VenuePlan } from "@layovr/shared";
+import type { Product, SeatRef, SeatRequest, StaffRole, Vendor, VenuePlan } from "@layovr/shared";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 
 /**
@@ -71,6 +71,36 @@ export type EventDetail = EventSummary & {
   floorPlanUrl: string | null;
   checklist: { key: string; label: string; done: boolean }[];
   buyerUrl: string;
+  /** Where guests find their seat. */
+  seatUrl: string;
+  seatChanges: "off" | "review" | "auto";
+};
+
+export type TicketList = {
+  total: number;
+  checkedIn: number;
+  seats: number;
+  tickets: {
+    id: string;
+    number: string;
+    name: string;
+    tier: string | null;
+    seat: SeatRef;
+    checkedInAt: string | null;
+    gate: string | null;
+    inGroup: boolean;
+  }[];
+};
+
+export type TicketImportResult = {
+  ok: boolean;
+  applied: boolean;
+  errors: string[];
+  warnings: string[];
+  total: number;
+  added: number;
+  updated: number;
+  removed: number;
 };
 
 export type VenueTemplate = {
@@ -97,6 +127,7 @@ export type TeamMember = {
   floatKobo: number;
   onShift: boolean;
   providedBy: "partner" | "layovr";
+  vendorId?: string;
 };
 
 export type ApiKey = { id: string; name: string; prefix: string; scope: "read" | "write"; createdAt: string; lastUsedAt: string | null; revoked: boolean };
@@ -129,6 +160,13 @@ export const useMe = () =>
     retry: false,
   });
 
+/** Sign out of the dashboard and drop every cached partner query. */
+export async function partnerLogout() {
+  await papi("/partner/logout", { body: {} }).catch(() => undefined);
+  queryClient.clear();
+  queryClient.setQueryData(["me"], null);
+}
+
 export const useEvents = () => useQuery({ queryKey: ["events"], queryFn: () => papi<EventSummary[]>("/partner/events") });
 export const useEvent = (id: string) =>
   useQuery({ queryKey: ["events", id], queryFn: () => papi<EventDetail>(`/partner/events/${id}`) });
@@ -144,6 +182,13 @@ export const useKeys = () => useQuery({ queryKey: ["keys"], queryFn: () => papi<
 export const useRunnerRequests = () =>
   useQuery({ queryKey: ["runner-requests"], queryFn: () => papi<(EventSummary & { partnerName: string })[]>("/operator/runner-requests") });
 export const useMcpInfo = () => useQuery({ queryKey: ["mcp-info"], queryFn: () => papi<McpInfo>("/mcp/info"), staleTime: Infinity });
+export const useTickets = (id: string, q: string) =>
+  useQuery({
+    queryKey: ["events", id, "tickets", q],
+    queryFn: () => papi<TicketList>(`/partner/events/${id}/tickets${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  });
+export const useSeatRequests = (id: string) =>
+  useQuery({ queryKey: ["events", id, "seat-requests"], queryFn: () => papi<SeatRequest[]>(`/partner/events/${id}/seat-requests`) });
 export const useDemoLogins = () =>
   useQuery({
     queryKey: ["demo-logins"],

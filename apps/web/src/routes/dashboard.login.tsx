@@ -1,8 +1,9 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { signOutPartner } from "@/components/SiteChrome";
 import { Field } from "@/components/ui-bits";
-import { papi, queryClient, useDemoLogins, type PartnerMe } from "@/lib/partnerApi";
+import { papi, queryClient, useDemoLogins, useMe, type PartnerMe } from "@/lib/partnerApi";
 
 export const Route = createFileRoute("/dashboard/login")({
   head: () => ({ meta: [{ title: "Partner sign-in · Layovr" }] }),
@@ -12,12 +13,30 @@ export const Route = createFileRoute("/dashboard/login")({
 function Login() {
   const navigate = useNavigate();
   const demo = useDemoLogins();
+  const me = useMe().data;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
     <div className="mx-auto grid max-w-4xl gap-8 px-4 py-10 md:grid-cols-2">
+      {me && (
+        <div className="card-pop bg-mint p-6 md:col-span-2">
+          <p className="flex items-center gap-2 font-bold">
+            <span className="h-2.5 w-2.5 rounded-full bg-card ring-2 ring-ink" aria-hidden />
+            You're signed in as {me.user.name} ({me.partner.name})
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to={me.user.role === "operator" ? "/dashboard/operator" : "/dashboard"} className="btn bg-coral">
+              Go to dashboard
+            </Link>
+            <button type="button" className="btn bg-card" onClick={() => void signOutPartner()}>
+              Sign out
+            </button>
+          </div>
+          <p className="mt-3 text-sm">To switch accounts, sign in below.</p>
+        </div>
+      )}
       <form
         className="card-pop grid h-fit gap-4 bg-sun p-8"
         onSubmit={async (e) => {

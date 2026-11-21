@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { fitGeo } from "@layovr/shared";
+import { FloorPlan, type PlanDot } from "@/components/FloorPlan";
 import { LocateMe } from "@/components/LocateMe";
 import { EmptyCard, Note, PageHero, Section } from "@/components/ui-bits";
 import {
@@ -10,6 +12,8 @@ import {
   useSession,
   vendorWait,
 } from "@/lib/store";
+import { directionsUrl } from "@/lib/google";
+import { vendorDots } from "@/lib/liveDots";
 import { cn, fillClass } from "@/lib/utils";
 
 export function VenuePage({ code }: { code: string }) {
@@ -48,6 +52,15 @@ export function VenuePage({ code }: { code: string }) {
     .sort((a, b) => Number(b.isOpen) - Number(a.isOpen));
   const free = runnersFree(d, venue.id);
   const hasSpots = d.spots.some((s) => s.venueId === venue.id);
+  const fit = venue.plan?.canvas.geo ? fitGeo(venue.plan.canvas.geo.points) : null;
+  const centre = fit && venue.plan ? fit.toGeo(venue.plan.canvas.width / 2, venue.plan.canvas.height / 2) : null;
+  // Carts and hawkers sharing where they are, with roughly how far from the buyer's chosen point.
+  const carts = vendorDots(d, venue.id);
+  const from = session.pinpoint?.x !== undefined && session.pinpoint.y !== undefined ? session.pinpoint : spot;
+  const cartDistance = (dot: PlanDot) =>
+    fit && from?.x !== undefined && from.y !== undefined
+      ? Math.max(10, Math.round((Math.hypot(dot.x - from.x, dot.y - from.y) * fit.metresPerUnit) / 10) * 10)
+      : null;
 
   return (
     <>
@@ -56,7 +69,22 @@ export function VenuePage({ code }: { code: string }) {
         fill={fillClass[venue.fill]}
         title={venue.name}
       >
-        <p>{venue.city}</p>
+        <p>
+          {venue.city}
+          {centre && (
+            <>
+              {" · "}
+              <a className="font-bold underline" href={directionsUrl(centre[0], centre[1])} target="_blank" rel="noreferrer">
+                Directions
+              </a>
+            </>
+          )}
+        </p>
+        {(venue.plan?.seating?.length ?? 0) > 0 && (
+          <Link to="/seat" search={{ event: venue.code }} className="btn mt-4 bg-card py-2 text-sm">
+            🎟️ Find my seat
+          </Link>
+        )}
         {hasSpots && (
           <div className="mt-6 rounded-2xl border-2 border-ink bg-card p-4 shadow-pop">
             {spot && !picking ? (
@@ -72,7 +100,9 @@ export function VenuePage({ code }: { code: string }) {
                         ? "From where you tapped on the map"
                         : session.pinpoint.method === "gps"
                           ? `From your location (±${session.pinpoint.accuracyM} m)`
-                          : "Chosen from the list"}
+                          : session.pinpoint.method === "seat"
+                            ? `To your seat: ${session.seatNote ?? "from your ticket"}`
+                            : "Chosen from the list"}
                     </div>
                   )}
                   {zone?.restricted && (
@@ -131,6 +161,32 @@ export function VenuePage({ code }: { code: string }) {
           </EmptyCard>
         ) : (
           <>
+            {carts.length > 0 && (
+              <section className="mb-10 grid gap-4 md:grid-cols-[1fr_1fr]">
+                <div>
+                  <h2 className="text-2xl font-extrabold">On the move near you</h2>
+                  <ul className="mt-3 grid gap-2">
+                    {carts.map((dot) => {
+                      const m = cartDistance(dot);
+                      return (
+                        <li key={dot.id} className="rounded-2xl border-2 border-ink bg-card px-3 py-2 font-semibold">
+                          {dot.icon} {dot.label}
+                          {m !== null && <span className="font-normal"> · about {m} m from you</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="mt-2 text-sm text-muted-foreground">Carts share where they are while they're open. Order as usual and a runner brings it.</p>
+                </div>
+                <FloorPlan
+                  venue={venue}
+                  zones={d.zones.filter((z) => z.venueId === venue.id)}
+                  spots={[]}
+                  dots={carts}
+                  {...(from?.x !== undefined && from.y !== undefined ? { pin: { x: from.x, y: from.y } } : {})}
+                />
+              </section>
+            )}
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h2 className="text-3xl font-extrabold">Who's serving here</h2>
               <p className="text-sm text-muted-foreground">
@@ -177,6 +233,7 @@ export function VenuePage({ code }: { code: string }) {
                         <span className="chip bg-blush">Busy</span>
                       )}
                       <span className="chip">{count} items</span>
+                      {v.mobile && <span className="chip bg-sun">🛒 On the move</span>}
                     </div>
                   </Link>
                 );

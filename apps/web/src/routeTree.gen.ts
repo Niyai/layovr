@@ -19,7 +19,10 @@ import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as RunnerRouteImport } from './routes/runner'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as SeatRouteImport } from './routes/seat'
+import { Route as SeatsRouteImport } from './routes/seats'
 import { Route as StaffRouteImport } from './routes/staff'
+import { Route as StallRouteImport } from './routes/stall'
 import { Route as TrackRouteImport } from './routes/track'
 import { Route as AdminCaptureRouteImport } from './routes/admin_.capture'
 import { Route as AdminPrintRouteImport } from './routes/admin_.print'
@@ -28,6 +31,7 @@ import { Route as DashboardKeysRouteImport } from './routes/dashboard.keys'
 import { Route as DashboardLoginRouteImport } from './routes/dashboard.login'
 import { Route as DashboardOperatorRouteImport } from './routes/dashboard.operator'
 import { Route as DashboardSignupRouteImport } from './routes/dashboard.signup'
+import { Route as GCodeRouteImport } from './routes/g.$code'
 import { Route as LCodeRouteImport } from './routes/l.$code'
 import { Route as OOrderIdRouteImport } from './routes/o.$orderId'
 import { Route as PayOrderIdRouteImport } from './routes/pay.$orderId'
@@ -89,9 +93,24 @@ const ScanRoute = ScanRouteImport.update({
   path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SeatRoute = SeatRouteImport.update({
+  id: '/seat',
+  path: '/seat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeatsRoute = SeatsRouteImport.update({
+  id: '/seats',
+  path: '/seats',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StallRoute = StallRouteImport.update({
+  id: '/stall',
+  path: '/stall',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrackRoute = TrackRouteImport.update({
@@ -132,6 +151,11 @@ const DashboardOperatorRoute = DashboardOperatorRouteImport.update({
 const DashboardSignupRoute = DashboardSignupRouteImport.update({
   id: '/dashboard/signup',
   path: '/dashboard/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GCodeRoute = GCodeRouteImport.update({
+  id: '/g/$code',
+  path: '/g/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LCodeRoute = LCodeRouteImport.update({
@@ -197,7 +221,10 @@ export interface FileRoutesByFullPath {
   '/ops': typeof OpsRoute
   '/runner': typeof RunnerRoute
   '/scan': typeof ScanRoute
+  '/seat': typeof SeatRoute
+  '/seats': typeof SeatsRoute
   '/staff': typeof StaffRoute
+  '/stall': typeof StallRoute
   '/track': typeof TrackRoute
   '/admin/capture': typeof AdminCaptureRoute
   '/admin/print': typeof AdminPrintRoute
@@ -205,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/login': typeof DashboardLoginRoute
   '/dashboard/operator': typeof DashboardOperatorRoute
   '/dashboard/signup': typeof DashboardSignupRoute
+  '/g/$code': typeof GCodeRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -228,7 +256,10 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsRoute
   '/runner': typeof RunnerRoute
   '/scan': typeof ScanRoute
+  '/seat': typeof SeatRoute
+  '/seats': typeof SeatsRoute
   '/staff': typeof StaffRoute
+  '/stall': typeof StallRoute
   '/track': typeof TrackRoute
   '/admin/capture': typeof AdminCaptureRoute
   '/admin/print': typeof AdminPrintRoute
@@ -236,6 +267,7 @@ export interface FileRoutesByTo {
   '/dashboard/login': typeof DashboardLoginRoute
   '/dashboard/operator': typeof DashboardOperatorRoute
   '/dashboard/signup': typeof DashboardSignupRoute
+  '/g/$code': typeof GCodeRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -260,7 +292,10 @@ export interface FileRoutesById {
   '/ops': typeof OpsRoute
   '/runner': typeof RunnerRoute
   '/scan': typeof ScanRoute
+  '/seat': typeof SeatRoute
+  '/seats': typeof SeatsRoute
   '/staff': typeof StaffRoute
+  '/stall': typeof StallRoute
   '/track': typeof TrackRoute
   '/admin_/capture': typeof AdminCaptureRoute
   '/admin_/print': typeof AdminPrintRoute
@@ -268,6 +303,7 @@ export interface FileRoutesById {
   '/dashboard/login': typeof DashboardLoginRoute
   '/dashboard/operator': typeof DashboardOperatorRoute
   '/dashboard/signup': typeof DashboardSignupRoute
+  '/g/$code': typeof GCodeRoute
   '/l/$code': typeof LCodeRoute
   '/o/$orderId': typeof OOrderIdRoute
   '/pay/$orderId': typeof PayOrderIdRoute
@@ -293,7 +329,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/runner'
     | '/scan'
+    | '/seat'
+    | '/seats'
     | '/staff'
+    | '/stall'
     | '/track'
     | '/admin/capture'
     | '/admin/print'
@@ -301,6 +340,7 @@ export interface FileRouteTypes {
     | '/dashboard/login'
     | '/dashboard/operator'
     | '/dashboard/signup'
+    | '/g/$code'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
@@ -324,7 +364,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/runner'
     | '/scan'
+    | '/seat'
+    | '/seats'
     | '/staff'
+    | '/stall'
     | '/track'
     | '/admin/capture'
     | '/admin/print'
@@ -332,6 +375,7 @@ export interface FileRouteTypes {
     | '/dashboard/login'
     | '/dashboard/operator'
     | '/dashboard/signup'
+    | '/g/$code'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
@@ -355,7 +399,10 @@ export interface FileRouteTypes {
     | '/ops'
     | '/runner'
     | '/scan'
+    | '/seat'
+    | '/seats'
     | '/staff'
+    | '/stall'
     | '/track'
     | '/admin_/capture'
     | '/admin_/print'
@@ -363,6 +410,7 @@ export interface FileRouteTypes {
     | '/dashboard/login'
     | '/dashboard/operator'
     | '/dashboard/signup'
+    | '/g/$code'
     | '/l/$code'
     | '/o/$orderId'
     | '/pay/$orderId'
@@ -387,7 +435,10 @@ export interface RootRouteChildren {
   OpsRoute: typeof OpsRoute
   RunnerRoute: typeof RunnerRoute
   ScanRoute: typeof ScanRoute
+  SeatRoute: typeof SeatRoute
+  SeatsRoute: typeof SeatsRoute
   StaffRoute: typeof StaffRoute
+  StallRoute: typeof StallRoute
   TrackRoute: typeof TrackRoute
   AdminCaptureRoute: typeof AdminCaptureRoute
   AdminPrintRoute: typeof AdminPrintRoute
@@ -395,6 +446,7 @@ export interface RootRouteChildren {
   DashboardLoginRoute: typeof DashboardLoginRoute
   DashboardOperatorRoute: typeof DashboardOperatorRoute
   DashboardSignupRoute: typeof DashboardSignupRoute
+  GCodeRoute: typeof GCodeRoute
   LCodeRoute: typeof LCodeRoute
   OOrderIdRoute: typeof OOrderIdRoute
   PayOrderIdRoute: typeof PayOrderIdRoute
@@ -480,11 +532,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/seat': {
+      id: '/seat'
+      path: '/seat'
+      fullPath: '/seat'
+      preLoaderRoute: typeof SeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seats': {
+      id: '/seats'
+      path: '/seats'
+      fullPath: '/seats'
+      preLoaderRoute: typeof SeatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff': {
       id: '/staff'
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stall': {
+      id: '/stall'
+      path: '/stall'
+      fullPath: '/stall'
+      preLoaderRoute: typeof StallRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/track': {
@@ -541,6 +614,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/signup'
       fullPath: '/dashboard/signup'
       preLoaderRoute: typeof DashboardSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/g/$code': {
+      id: '/g/$code'
+      path: '/g/$code'
+      fullPath: '/g/$code'
+      preLoaderRoute: typeof GCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/l/$code': {
@@ -627,7 +707,10 @@ const rootRouteChildren: RootRouteChildren = {
   OpsRoute: OpsRoute,
   RunnerRoute: RunnerRoute,
   ScanRoute: ScanRoute,
+  SeatRoute: SeatRoute,
+  SeatsRoute: SeatsRoute,
   StaffRoute: StaffRoute,
+  StallRoute: StallRoute,
   TrackRoute: TrackRoute,
   AdminCaptureRoute: AdminCaptureRoute,
   AdminPrintRoute: AdminPrintRoute,
@@ -635,6 +718,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardLoginRoute: DashboardLoginRoute,
   DashboardOperatorRoute: DashboardOperatorRoute,
   DashboardSignupRoute: DashboardSignupRoute,
+  GCodeRoute: GCodeRoute,
   LCodeRoute: LCodeRoute,
   OOrderIdRoute: OOrderIdRoute,
   PayOrderIdRoute: PayOrderIdRoute,

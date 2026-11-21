@@ -23,9 +23,13 @@ export type Venue = {
   absorbLimitKobo: number; // price gap we cover without calling the buyer
   floorPlanUrl?: string; // traced image drawn under the plan shapes
   isSample: boolean;
-  /** Canvas, levels, sections and markers from the venue's layovr-plan file. */
+  /** Canvas, levels, sections, markers and seat blocks from the venue's layovr-plan file. */
   plan?: PlanMeta;
+  /** Whether guests can ask to change seats: off, reviewed by organisers, or approved automatically when free and the same ticket type. */
+  seatChanges?: SeatChanges;
 };
+
+export type SeatChanges = "off" | "review" | "auto";
 
 /** An area of a venue plan (a hall, lounge, food court, gate…). Orders are routed by zone. */
 export type Zone = {
@@ -74,6 +78,8 @@ export type Vendor = {
   isOpen: boolean;
   prepMinutes: number;
   fill: Fill;
+  /** A cart or hawker that moves around; can share a live position. */
+  mobile: boolean;
 };
 
 export type Product = {
@@ -143,7 +149,7 @@ export type OrderEvent = {
 };
 
 /** How the buyer told us where they are. */
-export type LocateMethod = "qr" | "map" | "gps" | "list";
+export type LocateMethod = "qr" | "map" | "gps" | "list" | "seat";
 
 /** Where exactly the buyer is, when they tapped the map or used GPS (plan canvas units). */
 export type Pinpoint = {
@@ -161,6 +167,93 @@ export type RunnerPosition = {
   y?: number;
   accuracyM: number;
   updatedAt: string;
+};
+
+/**
+ * Where a buyer is right now, when they chose to share it for an order.
+ * Sent only to that order's runner and to dispatch/admin. Deleted when the order closes.
+ */
+export type BuyerPosition = {
+  orderId: string;
+  x?: number;
+  y?: number;
+  level?: number;
+  accuracyM: number;
+  updatedAt: string;
+};
+
+/**
+ * A mobile vendor's live position (public). Only fresh (2 min), accurate
+ * (100 m) fixes are sent, and only while the vendor is open.
+ */
+export type VendorPosition = {
+  vendorId: string;
+  x: number;
+  y: number;
+  updatedAt: string;
+};
+
+/* ------------------------------------------------------------------ seats and tickets */
+
+/** A seat as tickets name it. */
+export type SeatRef = { block: string; row: string; seat: number };
+
+export type SeatRequestStatus = "pending" | "approved" | "declined" | "cancelled";
+/** A specific seat, anywhere in a block, or next to the guest's friend group. */
+export type SeatRequestWant = "seat" | "block" | "friends";
+
+export type SeatRequest = {
+  id: string;
+  venueId: string;
+  ticketId: string;
+  want: SeatRequestWant;
+  wantBlock?: string;
+  wantRow?: string;
+  wantSeat?: number;
+  note?: string;
+  status: SeatRequestStatus;
+  /** The seat when the request was made. */
+  from: SeatRef;
+  /** The new seat, once approved. */
+  to?: SeatRef;
+  decisionNote?: string;
+  createdAt: string;
+  decidedAt?: string;
+  /** Organiser and staff views only. */
+  guestName?: string;
+  ticketNumber?: string;
+  tier?: string;
+  /** Organiser and staff views only: friends' seats, for "sit with my friends". */
+  friends?: SeatRef[];
+  /** Organiser and staff views only: a free seat that fits the request, if there is one. */
+  suggestion?: SeatRef;
+};
+
+/** Someone in a guest's friend group. Exact seats only when that friend chose to share them. */
+export type FriendSeat = {
+  firstName: string;
+  block: string;
+  row?: string;
+  seat?: number;
+  checkedIn: boolean;
+  isMe: boolean;
+};
+
+/** A ticket as its holder sees it (by the unguessable id saved on their phone). */
+export type GuestTicket = {
+  id: string;
+  venueId: string;
+  ticketNumber: string;
+  firstName: string;
+  tier?: string;
+  seat: SeatRef;
+  checkedInAt?: string;
+  /** Entrance the ticket was scanned at. */
+  gate?: string;
+  /** Show my exact seat to my friend group. */
+  shareSeat: boolean;
+  group?: { code: string; name: string; members: FriendSeat[] };
+  requests: SeatRequest[];
 };
 
 /** The colour a buyer and runner both hold up to find each other. See MATCH_SIGNALS. */
@@ -200,7 +293,7 @@ export type Order = {
   };
 };
 
-export type StaffRole = "admin" | "dispatch" | "runner" | "capture";
+export type StaffRole = "admin" | "dispatch" | "runner" | "capture" | "vendor";
 
 export type Staff = {
   id: string;
@@ -212,6 +305,8 @@ export type Staff = {
   floatKobo: number;
   canEnterRestricted: boolean;
   onShift: boolean;
+  /** Vendor staff: the stall or cart they work for. */
+  vendorId?: string;
 };
 
 export type CartLine = {
@@ -253,6 +348,14 @@ export type Snapshot = DB & {
   me: Staff | null;
   /** Dispatch and admin only. */
   runnerPositions: RunnerPosition[];
+  /** The runner of an order (their own active orders) and dispatch/admin only. */
+  buyerPositions: BuyerPosition[];
+  /** Mobile vendors that are open and sharing. Public. */
+  vendorPositions: VendorPosition[];
+  /** The caller's own tickets (by the ids saved on this phone). */
+  tickets: GuestTicket[];
+  /** Admin and dispatch only: seat change requests at their venue. */
+  seatRequests: SeatRequest[];
   config: {
     paymentMode: "demo" | "flutterwave";
     allowReset: boolean;
@@ -274,6 +377,10 @@ export type Session = {
   cartVenueId?: string;
   spotId?: string;
   pinpoint?: Pinpoint;
+  /** "Block C · Row F · Seat 106" when ordering to a ticket's seat; prefills the landmark note. */
+  seatNote?: string;
   myOrderIds: string[];
+  /** Tickets this phone looked up (unguessable ids). */
+  myTicketIds?: string[];
   ageConfirmed?: boolean;
 };

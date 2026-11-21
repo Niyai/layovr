@@ -18,7 +18,7 @@ import { EmptyCard, Section } from "@/components/ui-bits";
 import { useConnection } from "@/lib/store";
 import appCss from "../styles.css?url";
 
-const STAFF_PREFIXES = ["/ops", "/runner", "/admin", "/staff"];
+const STAFF_PREFIXES = ["/ops", "/runner", "/admin", "/staff", "/stall", "/seats"];
 /** Pages that render without live data (everything else waits for the first snapshot). */
 const STATIC_PATHS = ["/", "/how-it-works", "/developers"];
 /** Pages with their own data (partner dashboard, vendor invites): no live snapshot needed. */

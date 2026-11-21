@@ -22,7 +22,7 @@ const scopeFor = (auth: PartnerAuth, venueId: string): Scope => ({
 });
 
 /** Runs a write for a partner and records it in the audit log, success or failure. */
-async function audited<T>(ctx: Ctx, auth: PartnerAuth, action: string, target: string | null, run: () => Promise<T>): Promise<T> {
+export async function audited<T>(ctx: Ctx, auth: PartnerAuth, action: string, target: string | null, run: () => Promise<T>): Promise<T> {
   events.requireWrite(auth);
   try {
     const out = await run();
@@ -35,7 +35,7 @@ async function audited<T>(ctx: Ctx, auth: PartnerAuth, action: string, target: s
 }
 
 /** The partner and the event they may manage, from the :id path param. */
-async function eventFor(c: C, ctx: Ctx) {
+export async function eventFor(c: C, ctx: Ctx) {
   const auth = requirePartner(c);
   const event = await events.partnerEvent(ctx.db, auth, c.req.param("id") ?? "");
   return { auth, event, scope: scopeFor(auth, event.id as string) };
@@ -211,11 +211,11 @@ export function partnerRoutes(r: Router, ctx: Ctx) {
 
   r.patch(
     "/partner/events/:id/plan/geo",
-    { tag: "Venue plan", summary: "Link the plan to GPS with control points", access: "partner", body: schemas.geo, returns: "{ residualM, metresPerUnit }" },
+    { tag: "Venue plan", summary: "Link the plan to GPS with control points", description: "From on-site calibration, or with approximate: true when the plan was placed by eye on a map.", access: "partner", body: schemas.geo, returns: "{ residualM, metresPerUnit }" },
     async (c) => {
       const { auth, event } = await eventFor(c, ctx);
-      const { points } = await body(c, schemas.geo);
-      return c.json(await audited(ctx, auth, "plan.geo", event.id, () => location.saveGeo(ctx, event.id, points)));
+      const { points, approximate } = await body(c, schemas.geo);
+      return c.json(await audited(ctx, auth, "plan.geo", event.id, () => location.saveGeo(ctx, event.id, points, approximate)));
     },
   );
 

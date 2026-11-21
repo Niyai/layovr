@@ -1,4 +1,4 @@
-import { makeSeed, planSchema } from "@layovr/shared";
+import { DEMO_TICKETS, makeSeed, makeTestTickets, planSchema, seatKey } from "@layovr/shared";
 import { hashPin } from "../lib/auth";
 import { applyPlan } from "../services/plans";
 import type { Db, Queryable } from "./client";
@@ -22,10 +22,10 @@ export async function seed(db: Db): Promise<void> {
     for (const v of s.vendors) {
       await q.query(
         `insert into vendors (id, venue_id, zone_id, name, emoji, category, description,
-           stall_label, is_open, prep_minutes, fill)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+           stall_label, is_open, prep_minutes, fill, mobile)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [v.id, v.venueId, v.zoneId ?? null, v.name, v.emoji, v.category, v.description,
-         v.stallLabel, v.isOpen, v.prepMinutes, v.fill],
+         v.stallLabel, v.isOpen, v.prepMinutes, v.fill, v.mobile],
       );
     }
     const venueOf = new Map(s.vendors.map((v) => [v.id, v.venueId]));
@@ -57,16 +57,47 @@ export async function seed(db: Db): Promise<void> {
          starts_at = '2026-10-28T08:00:00+01:00', ends_at = '2026-10-29T20:00:00+01:00'
        where id = 'v_moonshot'`,
     );
+    await seedTickets(q, s.plans.find((p) => p.venueId === "v_moonshot")!.plan);
     for (const st of s.staff) {
       await q.query(
         `insert into staff (id, venue_id, name, role, phone, pin_hash, float_kobo,
-           can_enter_restricted, on_shift)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+           can_enter_restricted, on_shift, vendor_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [st.id, st.venueId, st.name, st.role, st.phone, hashPin(st.pin),
-         st.floatKobo, st.canEnterRestricted, st.onShift],
+         st.floatKobo, st.canEnterRestricted, st.onShift, st.vendorId ?? null],
       );
     }
   });
+}
+
+/**
+ * Test tickets for the Moonshot Main Bowl (the real chart isn't public): named
+ * demo tickets in a friend group, one waiting seat change, and made-up tickets
+ * filling about 60% of the other seats.
+ */
+async function seedTickets(q: Queryable, planInput: unknown) {
+  const plan = planSchema.parse(planInput);
+  await q.query("insert into ticket_groups (id, venue_id, code, name) values ('grp_demo', 'v_moonshot', 'MOONGANG', 'Moonshot crew')");
+  const named = new Set(DEMO_TICKETS.map((t) => seatKey(t.block, t.row, t.seat)));
+  const generated = makeTestTickets(plan.seating, { prefix: "MS", share: 0.6, gates: ["Zone B entrance", "Zone D entrance", "Zone A entrance"] })
+    .filter((t) => !named.has(seatKey(t.block, t.row, t.seat)));
+  for (const t of [...DEMO_TICKETS, ...generated]) {
+    await q.query(
+      `insert into tickets (id, venue_id, ticket_number, barcode, holder_name, tier, block, row_label, seat_number,
+         checked_in_at, gate, group_id, share_seat)
+       values ($1,'v_moonshot',$2,$3,$4,$5,$6,$7,$8, case when $9 then now() end, $10, $11, $12)`,
+      [
+        "id" in t ? t.id : `tkt_${t.number.toLowerCase().replace(/[^a-z0-9]/g, "")}`, t.number, t.barcode ?? null, t.name ?? "",
+        t.tier ?? null, t.block, t.row, t.seat, Boolean(t.checkedIn), t.gate ?? null,
+        "group" in t && t.group ? "grp_demo" : null, "shareSeat" in t ? t.shareSeat : true,
+      ],
+    );
+  }
+  await q.query(
+    `insert into seat_requests (id, venue_id, ticket_id, want, note, from_seat)
+     values ('srq_demo', 'v_moonshot', 'tkt_demo_bisi', 'friends', 'Can I sit with Ada and Chidi?', $1)`,
+    [JSON.stringify({ block: "L", row: "K", seat: 2 })],
+  );
 }
 
 export async function isEmpty(q: Queryable): Promise<boolean> {
@@ -77,7 +108,7 @@ export async function isEmpty(q: Queryable): Promise<boolean> {
 /** Admin → "Reset demo data": wipes every table and reloads the seed. */
 export async function resetData(db: Db): Promise<void> {
   await db.exec(
-    `truncate api_audit, api_keys, invites, runner_locations, uploads, order_events, payments,
+    `truncate seat_requests, tickets, ticket_groups, api_audit, api_keys, invites, runner_locations, buyer_locations, vendor_locations, uploads, order_events, payments,
        purchases, order_items, order_stops, orders, products, vendors, spots, zones, staff,
        venues, partner_users, partners restart identity cascade`,
   );

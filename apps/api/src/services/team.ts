@@ -3,13 +3,14 @@ import { uid, type Product, type StaffRole, type Vendor } from "@layovr/shared";
 import type { Ctx, Scope } from "../context";
 import type { Queryable } from "../db/client";
 import { checkPin, hashPin } from "../lib/auth";
-import { HttpError, conflict, notFound } from "../lib/errors";
+import { HttpError, bad, conflict, notFound } from "../lib/errors";
 import { notify } from "../lib/events";
 import * as admin from "./admin";
+import { clearVendorLocation } from "./location";
 import { toProduct, toVendor } from "./mappers";
 
 /**
- * People at an event: staff (runners, dispatch, admins, menu capture) and
+ * People at an event: staff (runners, dispatch, admins, menu capture, vendor staff) and
  * vendors, including the single-use links vendors use to fill in their own menu.
  * Callers have already checked the caller may manage `venueId`.
  */
@@ -25,6 +26,8 @@ export type TeamMember = {
   floatKobo: number;
   onShift: boolean;
   providedBy: "partner" | "layovr";
+  /** Vendor staff only: the stall or cart they share the position of. */
+  vendorId?: string;
 };
 
 const toMember = (r: Record<string, unknown>): TeamMember => ({
@@ -36,6 +39,7 @@ const toMember = (r: Record<string, unknown>): TeamMember => ({
   floatKobo: r.float_kobo as number,
   onShift: r.on_shift as boolean,
   providedBy: r.provided_by as "partner" | "layovr",
+  ...(r.vendor_id ? { vendorId: r.vendor_id as string } : {}),
 });
 
 export async function listStaff(ctx: Ctx, venueId: string): Promise<TeamMember[]> {
@@ -58,15 +62,30 @@ async function freshPin(q: Queryable, venueId: string): Promise<string> {
 export async function addStaff(
   ctx: Ctx,
   venueId: string,
-  input: { name: string; role: StaffRole; phone: string; canEnterRestricted: boolean; floatKobo: number; onShift: boolean },
+  input: {
+    name: string;
+    role: StaffRole;
+    phone: string;
+    canEnterRestricted: boolean;
+    floatKobo: number;
+    onShift: boolean;
+    vendorId?: string | undefined;
+  },
   providedBy: "partner" | "layovr",
 ): Promise<{ member: TeamMember; pin: string }> {
+  let vendorId: string | null = null;
+  if (input.role === "vendor") {
+    if (!input.vendorId) throw bad("Pick the vendor this person works for");
+    const [v] = await ctx.db.query("select 1 from vendors where id = $1 and venue_id = $2", [input.vendorId, venueId]);
+    if (!v) throw notFound("Vendor not found");
+    vendorId = input.vendorId;
+  }
   const pin = await freshPin(ctx.db, venueId);
   const id = uid("st");
   await ctx.db.query(
-    `insert into staff (id, venue_id, name, role, phone, pin_hash, float_kobo, can_enter_restricted, on_shift, provided_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [id, venueId, input.name, input.role, input.phone, hashPin(pin), input.floatKobo, input.canEnterRestricted, input.onShift, providedBy],
+    `insert into staff (id, venue_id, name, role, phone, pin_hash, float_kobo, can_enter_restricted, on_shift, provided_by, vendor_id)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [id, venueId, input.name, input.role, input.phone, hashPin(pin), input.floatKobo, input.canEnterRestricted, input.onShift, providedBy, vendorId],
   );
   notify({ venueId });
   const [row] = await ctx.db.query("select * from staff where id = $1", [id]);
@@ -145,6 +164,7 @@ export type VendorInput = {
   fill: Vendor["fill"];
   contactName?: string | undefined;
   contactPhone?: string | undefined;
+  mobile?: boolean | undefined;
 };
 
 async function saveVendor(ctx: Ctx, scope: Scope, id: string, input: VendorInput) {
@@ -161,11 +181,13 @@ async function saveVendor(ctx: Ctx, scope: Scope, id: string, input: VendorInput
     fill: input.fill,
     ...(input.zoneId ? { zoneId: input.zoneId } : {}),
   });
-  await ctx.db.query("update vendors set contact_name = $2, contact_phone = $3 where id = $1", [
+  await ctx.db.query("update vendors set contact_name = $2, contact_phone = $3, mobile = $4 where id = $1", [
     id,
     input.contactName ?? null,
     input.contactPhone ?? null,
+    input.mobile ?? false,
   ]);
+  if (!input.mobile || !input.isOpen) await clearVendorLocation(ctx.db, id);
 }
 
 async function vendorById(ctx: Ctx, venueId: string, id: string): Promise<TeamVendor> {
@@ -194,6 +216,7 @@ export async function updateVendor(ctx: Ctx, scope: Scope, id: string, patch: Pa
     fill: patch.fill ?? current.fill,
     contactName: patch.contactName ?? current.contactName,
     contactPhone: patch.contactPhone ?? current.contactPhone,
+    mobile: patch.mobile ?? current.mobile,
   };
   await saveVendor(ctx, scope, id, merged);
   return vendorById(ctx, scope.venueId, id);

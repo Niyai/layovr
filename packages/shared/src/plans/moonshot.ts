@@ -161,5 +161,28 @@ export const moonshotPlan: VenuePlanInput = {
     { kind: "stairs", label: "Zone B stairs", ...at(0, 32) },
     { kind: "stairs", label: "Zone D stairs", ...at(180, 32) },
     { kind: "ops_desk", label: "Layovr ops desk (confirm on site)", level: 0, ...at(195, 42) },
+    { kind: "portal", label: "Bowl doors B5 (left)", level: 5, ...at(325, 14.5) },
+    { kind: "portal", label: "Bowl doors B5 (right)", level: 5, ...at(35, 14.5) },
+    { kind: "portal", label: "Bowl doors D5", level: 5, ...at(180, 14) },
+  ],
+  // Test seating (not the real Main Bowl chart): three blocks fanned round a stage
+  // on the D side, rows A–L from the front, entered from floor 5.
+  seating: [
+    {
+      code: "L", name: "Block L", area: "BOWL", level: 5, portal: "Bowl doors B5 (left)", tier: "Regular",
+      layout: { type: "arc", cx: C, cy: 60, r0: 4, r1: 14, a0: 300, a1: 338 },
+      rows: 12, seatsPerRow: [8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13],
+    },
+    {
+      code: "C", name: "Block C", area: "BOWL", level: 5, portal: "Bowl doors D5", tier: "VIP",
+      layout: { type: "arc", cx: C, cy: 60, r0: 4, r1: 14, a0: 342, a1: 378 },
+      rows: 12, seatsPerRow: [10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15], firstSeat: 101,
+      aisleAfter: [], accessible: ["A-101", "A-102"],
+    },
+    {
+      code: "R", name: "Block R", area: "BOWL", level: 5, portal: "Bowl doors B5 (right)", tier: "Regular",
+      layout: { type: "arc", cx: C, cy: 60, r0: 4, r1: 14, a0: 22, a1: 60 },
+      rows: 12, seatsPerRow: [8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13],
+    },
   ],
 };

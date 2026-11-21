@@ -14,6 +14,8 @@ const TAGS: { name: string; description: string }[] = [
   { name: "Venue plan", description: "The event map in the layovr-plan/1 standard: floors, areas, QR spots, entrances." },
   { name: "Venue library", description: "Starting plans for popular Lagos venues and generic layouts." },
   { name: "Vendors", description: "Stalls and menus, and self-service invite links for vendors." },
+  { name: "Seating", description: "Tickets with seats (imported from your ticketing system), check-in, and guests' seat change requests." },
+  { name: "Guests", description: "What a guest's phone uses: find my seat, friend groups, ask to change seats." },
   { name: "Staff", description: "Runners, dispatchers, on-site admins and menu capture staff." },
   { name: "API keys", description: "Keys for the headless API and MCP." },
   { name: "Layovr operators", description: "Layovr's own team: runner requests." },

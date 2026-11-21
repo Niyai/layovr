@@ -169,6 +169,26 @@ describe("team", () => {
     expect((await call("POST", "/auth/login", { code: "MOONSHOT", pin: add.json.pin })).status).toBe(401);
   });
 
+  it("adds vendor staff only for a vendor at this event, and saves rough map placements as approximate", async () => {
+    const a = await signup();
+    const e = (await call("POST", "/partner/events", landmark, a)).json;
+    expect((await call("POST", `/partner/events/${e.id}/staff`, { name: "Musa", role: "vendor" }, a)).status).toBe(400);
+    expect((await call("POST", `/partner/events/${e.id}/staff`, { name: "Musa", role: "vendor", vendorId: "vd_zobo" }, a)).status).toBe(404);
+    const v = (await call("POST", `/partner/events/${e.id}/vendors`, { name: "Gala Cart", mobile: true }, a)).json;
+    expect(v.mobile).toBe(true);
+    const add = await call("POST", `/partner/events/${e.id}/staff`, { name: "Musa", role: "vendor", vendorId: v.id }, a);
+    expect(add.json.member).toMatchObject({ role: "vendor", vendorId: v.id });
+
+    const plan = (await call<VenuePlan>("GET", `/partner/events/${e.id}/plan`, undefined, a)).json;
+    const points = [
+      { x: 0, y: 0, lat: 6.4281, lng: 3.4443 },
+      { x: plan.canvas.width, y: plan.canvas.height, lat: 6.4275, lng: 3.4451 },
+    ];
+    expect((await call("PATCH", `/partner/events/${e.id}/plan/geo`, { points, approximate: true }, a)).status).toBe(200);
+    const after = (await call<VenuePlan>("GET", `/partner/events/${e.id}/plan`, undefined, a)).json;
+    expect(after.canvas.geo).toMatchObject({ approximate: true, points });
+  });
+
   it("vendor invite links are single use and fill in the menu", async () => {
     const a = await signup();
     const e = (await call("POST", "/partner/events", landmark, a)).json;

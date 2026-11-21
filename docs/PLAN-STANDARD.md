@@ -17,7 +17,7 @@ was made exactly that way.
 - Upload again whenever you change something. Areas and spots are matched by
   their codes and updated in place. Nothing is ever deleted by an upload.
 
-## The five things a plan contains
+## The six things a plan contains
 
 | Part | What it is | Moonshot example |
 | --- | --- | --- |
@@ -25,7 +25,8 @@ was made exactly that way.
 | **Sections** | The big signposted parts of the building | Zone A, Zone B, Zone D |
 | **Areas** | Rooms and spaces an order can be delivered to | Exhibition Hall 1, Banquet, Prime Lounge |
 | **Spots** | Where a QR card is stuck: the delivery address | `B0-EXH1-1` "Exhibition Hall 1 · front" |
-| **Markers** | Doors, stairs, lifts, the ops desk | "Zone C entrance", blocked |
+| **Markers** | Doors, stairs, lifts, portals, the ops desk | "Zone C entrance", blocked |
+| **Seating** (optional) | Blocks of numbered seats, for seated events | Block C, rows A–L, seats 101+ |
 
 ## Step by step
 
@@ -130,12 +131,34 @@ a number (`BOWL-1`). Admin suggests the next free code when you click the plan.
 
 Markers help runners navigate and let ops close routes on the day.
 
-`entrance`, `stairs`, `lift`, `escalator`, `ops_desk`, `toilet`, `first_aid`,
+`entrance`, `stairs`, `lift`, `escalator`, `portal` (the way into a seating
+block: a vomitory or auditorium door), `ops_desk`, `toilet`, `first_aid`,
 `security`, `info`. Set `"status": "blocked"` on an entrance that is closed
 (Moonshot's Zone C), with a `note` saying why. Leave `level` out for things
 that connect every floor, like stairs.
 
-### 9. Placing the plan on the real map (GPS)
+### 9. Seating (seated events)
+
+Add one entry to `seating` per block on the venue's seating chart. Guests are
+guided to their seat from it, and tickets name seats as block + row + seat.
+
+| Field | Meaning |
+| --- | --- |
+| `code` | What tickets call the block or section: `C`, `BLK-104` |
+| `name` | "Block C" |
+| `area` | The area it's in (usually the hall) |
+| `layout` | `{"type": "rows", "x", "y", "w", "h", "front": "top"}` for straight rows (`front` = the stage side), or `{"type": "arc", "cx", "cy", "r0", "r1", "a0", "a1"}` for curved rows round a stage at `cx, cy` (front row at `r0`) |
+| `rows` | How many (labelled A, B, C… from the front) or the labels, e.g. `["AA", "BB"]` |
+| `seatsPerRow` | One number, or one per row, front first |
+| `firstSeat`, `numbering` | First seat number (default 1); `ltr` or `rtl` as seen facing the stage |
+| `aisleAfter` | Seat numbers with an aisle after them |
+| `portal` | Label of the marker guests enter by |
+| `level`, `tier`, `accessible` | Floor it's entered from; ticket type; wheelchair spaces as `"A-1"` |
+
+The Moonshot plan has three test blocks in the Main Bowl. In the dashboard, the
+Seating tab edits blocks with a live preview.
+
+### 10. Placing the plan on the real map (GPS)
 
 This lets buyers press "Use my location" and lets dispatch see runners on the
 plan. It needs two or more **control points**: places you can find both on the
@@ -171,12 +194,15 @@ schematic), GPS suggestions are rougher, and buyers can always tap the map inste
 
 **Errors** (must be fixed before applying): missing or duplicate codes, an area
 on a level that isn't listed, a spot pointing at an area that doesn't exist,
-shapes with missing numbers, a file made for a different venue.
+shapes with missing numbers, a file made for a different venue, a seat block in
+an unknown area or entered by a marker that doesn't exist, or seat counts that
+don't match the rows.
 
 **Warnings** (apply anyway, but check them): a spot drawn outside its area, a
 spot code that doesn't follow the format, an area with no spots, anything
 outside the canvas, every `approximate` area, and GPS points that are
-approximate or disagree by more than 25 m. GPS points that sit on top of each
+approximate or disagree by more than 25 m, seats drawn outside their
+area, and wheelchair spaces that aren't seats in the block. GPS points that sit on top of each
 other are an error.
 
 ## On the site walk

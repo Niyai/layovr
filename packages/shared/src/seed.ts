@@ -103,6 +103,7 @@ const vendor = (
   fill: Fill,
   zoneId?: string,
   isOpen = true,
+  mobile = false,
 ): Vendor => ({
   id,
   venueId,
@@ -114,6 +115,7 @@ const vendor = (
   prepMinutes,
   fill,
   isOpen,
+  mobile,
   ...(zoneId ? { zoneId } : {}),
 });
 
@@ -148,11 +150,13 @@ const vendors: Vendor[] = [
     "Zobo & Co (sample)",
     "🧃",
     "Drinks",
-    "Chilled zobo, Chapman, water and soft drinks.",
-    "Zone B entrance hall (B0)",
+    "Chilled zobo, Chapman, water and soft drinks. A cart that walks the venue.",
+    "Cart, usually near Zone B entrance hall (B0)",
     3,
     "mint",
     "z_moonshot_blobby",
+    true,
+    true,
   ),
   vendor(
     "vd_grill",
@@ -439,6 +443,18 @@ export function makeSeed(): Seed {
         floatKobo: 0,
         canEnterRestricted: false,
         onShift: true,
+      },
+      {
+        id: "st_musa",
+        venueId: "v_moonshot",
+        name: "Musa",
+        role: "vendor",
+        phone: "+2348000000007",
+        pin: "7777",
+        floatKobo: 0,
+        canEnterRestricted: false,
+        onShift: true,
+        vendorId: "vd_zobo",
       },
     ],
   };

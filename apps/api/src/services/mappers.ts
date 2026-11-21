@@ -39,6 +39,7 @@ export const toVenue = (r: Row): Venue => ({
   absorbLimitKobo: r.absorb_limit_kobo,
   ...opt("floorPlanUrl", r.floor_plan_url as string | null),
   ...(r.plan ? { plan: r.plan } : {}),
+  seatChanges: r.seat_changes ?? "review",
 });
 
 export const toZone = (r: Row): Zone => ({
@@ -79,6 +80,7 @@ export const toVendor = (r: Row): Vendor => ({
   isOpen: r.is_open,
   prepMinutes: r.prep_minutes,
   fill: r.fill as Fill,
+  mobile: Boolean(r.mobile),
   ...opt("zoneId", r.zone_id as string | null),
 });
 
@@ -108,6 +110,7 @@ export const toStaff = (r: Row): Staff => ({
   floatKobo: r.float_kobo,
   canEnterRestricted: r.can_enter_restricted,
   onShift: r.on_shift,
+  ...opt("vendorId", r.vendor_id as string | null),
 });
 
 /** What buyers may see about staff: a runner's first name. */

@@ -6,6 +6,9 @@ import type {
   Order,
   Pinpoint,
   Product,
+  SeatRef,
+  SeatRequest,
+  SeatRequestWant,
   Session,
   Snapshot,
   Spot,
@@ -38,7 +41,7 @@ export {
  * "change" event over /api/stream whenever anything is written, and every
  * open screen refetches, so phones, the ops laptop and runners stay in sync.
  *
- * Only the buyer's basket, chosen spot and order ids live in this browser.
+ * Only the buyer's basket, chosen spot, order ids and ticket ids live in this browser.
  */
 
 const SESSION_KEY = "layovr:session:v1";
@@ -56,6 +59,10 @@ const emptySnapshot: Snapshot = {
   stats: { vendorActive: {}, runnersFree: {} },
   me: null,
   runnerPositions: [],
+  buyerPositions: [],
+  vendorPositions: [],
+  tickets: [],
+  seatRequests: [],
   config: { paymentMode: "demo", allowReset: false, demoAccounts: [] },
 };
 
@@ -135,8 +142,11 @@ export function refresh(): Promise<void> {
   }
   inFlight = (async () => {
     try {
-      const ids = session.myOrderIds.join(",");
-      snap = await api<Snapshot>(`/snapshot${ids ? `?orders=${ids}` : ""}`);
+      const params = new URLSearchParams();
+      if (session.myOrderIds.length) params.set("orders", session.myOrderIds.join(","));
+      if (session.myTicketIds?.length) params.set("tickets", session.myTicketIds.join(","));
+      const qs = params.toString();
+      snap = await api<Snapshot>(`/snapshot${qs ? `?${qs}` : ""}`);
       connection = "ready";
     } catch {
       if (connection !== "ready") connection = "offline";
@@ -247,11 +257,17 @@ export function getDB(): Snapshot {
 /** Where the buyer is: the spot to deliver to, plus how they told us (QR, map, GPS, list). */
 export function setSpot(spotId: string | undefined, pinpoint?: Pinpoint) {
   const next: Session = { ...session };
+  delete next.seatNote;
   if (spotId) next.spotId = spotId;
   else delete next.spotId;
   if (spotId && pinpoint) next.pinpoint = pinpoint;
   else delete next.pinpoint;
   commitSession(next);
+}
+
+/** Deliver to a ticket's seat: the nearest spot, the seat's exact point, and the seat in the note. */
+export function deliverToSeat(spotId: string, pinpoint: Pinpoint, seatNote: string) {
+  commitSession({ ...session, spotId, pinpoint, seatNote });
 }
 
 export function addToCart(product: Product, venueId: string, qty = 1) {
@@ -555,6 +571,121 @@ export async function shareRunnerLocation(pos: {
     return false;
   }
 }
+
+type Fix = { lat: number; lng: number; accuracyM: number };
+
+/** Buyer phone → server, opt-in, so their runner can find them. False once the order has closed. */
+export async function shareBuyerLocation(orderId: string, pos: Fix & { level?: number }): Promise<boolean> {
+  try {
+    return (await api<{ sharing: boolean }>(`/orders/${orderId}/location`, { body: pos })).sharing;
+  } catch {
+    return false;
+  }
+}
+
+export async function stopBuyerLocation(orderId: string): Promise<void> {
+  await api(`/orders/${orderId}/location`, { method: "DELETE" }).catch(() => undefined);
+}
+
+/** Vendor staff phone → server, while their mobile cart is open. */
+export async function shareVendorLocation(pos: Fix): Promise<boolean> {
+  try {
+    return (await api<{ sharing: boolean }>("/vendor/location", { body: pos })).sharing;
+  } catch {
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------ seats */
+
+/** Finds a ticket by number or barcode and keeps it on this phone. Returns its id, or null (with a toast). */
+export async function findTicket(ticket: string, event?: string): Promise<string | null> {
+  try {
+    const { ticketId } = await api<{ ticketId: string }>("/tickets/find", {
+      body: { ticket: ticket.trim(), ...(event ? { event } : {}) },
+    });
+    commitSession({
+      ...session,
+      myTicketIds: [ticketId, ...(session.myTicketIds ?? []).filter((t) => t !== ticketId)].slice(0, 10),
+    });
+    await refresh();
+    return ticketId;
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+export function forgetTicket(ticketId: string) {
+  commitSession({ ...session, myTicketIds: (session.myTicketIds ?? []).filter((t) => t !== ticketId) });
+  void refresh();
+}
+
+export function setShareSeat(ticketId: string, shareSeat: boolean) {
+  return act(`/tickets/${ticketId}`, { shareSeat }, "PATCH");
+}
+
+export function requestSeatChange(
+  ticketId: string,
+  input: { want: SeatRequestWant; block?: string; row?: string; seat?: number; note?: string },
+) {
+  return act(`/tickets/${ticketId}/requests`, input);
+}
+
+/** Seats that already have a ticket at this ticket's event ("BLOCK/ROW/SEAT"). */
+export async function takenSeats(ticketId: string): Promise<Set<string>> {
+  try {
+    return new Set(await api<string[]>(`/tickets/${ticketId}/taken`));
+  } catch {
+    return new Set();
+  }
+}
+
+export function cancelSeatRequest(ticketId: string, requestId: string) {
+  return act(`/tickets/${ticketId}/requests/${requestId}/cancel`);
+}
+
+export async function createFriendGroup(ticketId: string, name?: string): Promise<string | null> {
+  try {
+    const { code } = await api<{ code: string }>(`/tickets/${ticketId}/group`, { body: name ? { name } : {} });
+    return code;
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : String(e));
+    return null;
+  } finally {
+    void refresh();
+  }
+}
+
+export function joinFriendGroup(ticketId: string, code: string) {
+  return act(`/tickets/${ticketId}/group/join`, { code });
+}
+
+export function leaveFriendGroup(ticketId: string) {
+  return act(`/tickets/${ticketId}/group/leave`);
+}
+
+export type GroupPreview = { code: string; name: string; venueId: string; eventCode: string; eventName: string; members: number };
+
+/** What a friend group link shows before joining (no names). */
+export async function groupPreview(code: string): Promise<GroupPreview | null> {
+  try {
+    return await api<GroupPreview>(`/groups/${encodeURIComponent(code)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Admin/dispatch: approve (to `seat`, or the seat asked for) or decline a seat change. */
+export function decideSeatRequest(
+  requestId: string,
+  decision: "approve" | "decline",
+  seat?: SeatRef,
+  note?: string,
+): Promise<boolean> {
+  return act(`/seat-requests/${requestId}`, { decision, ...(seat ?? {}), ...(note ? { note } : {}) });
+}
+
 
 /** Admin: place the venue plan on the real map with GPS control points. */
 export async function saveGeo(

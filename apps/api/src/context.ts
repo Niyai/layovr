@@ -23,6 +23,8 @@ export type StaffRow = {
   float_kobo: number;
   can_enter_restricted: boolean;
   on_shift: boolean;
+  /** Vendor staff only. */
+  vendor_id?: string | null;
 };
 
 /**

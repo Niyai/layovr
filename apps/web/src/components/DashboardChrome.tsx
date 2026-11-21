@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Logo } from "@/components/SiteChrome";
-import { papi, queryClient, useMe, type PartnerMe } from "@/lib/partnerApi";
+import { Logo, SignedInLabel, signOutPartner } from "@/components/SiteChrome";
+import { useMe, type PartnerMe } from "@/lib/partnerApi";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -42,17 +42,11 @@ export function DashboardHeader() {
         <div className="flex items-center gap-2 text-sm">
           {signedIn ? (
             <>
-              <span className="opacity-80">
-                {signedIn.user.name} · {signedIn.partner.name}
-              </span>
+              <SignedInLabel name={signedIn.user.name} detail={signedIn.partner.name} />
               <button
                 type="button"
                 className="rounded-full border-2 border-ink-foreground/40 px-3 py-1 font-semibold"
-                onClick={async () => {
-                  await papi("/partner/logout", { body: {} }).catch(() => undefined);
-                  queryClient.clear();
-                  void navigate({ to: "/dashboard/login" });
-                }}
+                onClick={() => void signOutPartner().then(() => navigate({ to: "/dashboard/login" }))}
               >
                 Sign out
               </button>

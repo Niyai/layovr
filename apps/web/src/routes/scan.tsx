@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { CameraScanner } from "@/components/CameraScanner";
 import { Field, PageHero, Section } from "@/components/ui-bits";
 import { getDB, spotByCode, venueByCode } from "@/lib/store";
 
@@ -8,11 +9,6 @@ export const Route = createFileRoute("/scan")({
   head: () => ({ meta: [{ title: "Scan a code · Layovr" }] }),
   component: Scan,
 });
-
-type Detector = {
-  detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]>;
-};
-type DetectorCtor = new (opts: { formats: string[] }) => Detector;
 
 /** Turns a scanned URL or typed code into a route. */
 function resolveCode(
@@ -39,13 +35,21 @@ function resolveCode(
 function Scan() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
-  const [camera, setCamera] = useState<
-    "idle" | "on" | "unsupported" | "denied"
-  >("idle");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const go = (raw: string) => {
+    // Seat-finder signs at gates and portals open the seat page.
+    const seat = raw.match(/\/seat(\?[^\s#]*)?/);
+    if (seat) {
+      const q = new URLSearchParams(seat[1] ?? "");
+      void navigate({
+        to: "/seat",
+        search: {
+          ...(q.get("event") ? { event: q.get("event")! } : {}),
+          ...(q.get("from") ? { from: q.get("from")! } : {}),
+        },
+      });
+      return;
+    }
     const target = resolveCode(raw);
     if (!target) {
       toast.error(
@@ -58,47 +62,6 @@ function Scan() {
     else if (target.to === "/s/$spot")
       void navigate({ to: "/s/$spot", params: { spot: target.spot } });
     else void navigate({ to: "/l/$code", params: { code: target.code } });
-  };
-
-  useEffect(
-    () => () => streamRef.current?.getTracks().forEach((t) => t.stop()),
-    [],
-  );
-
-  const startCamera = async () => {
-    const Ctor = (window as unknown as { BarcodeDetector?: DetectorCtor })
-      .BarcodeDetector;
-    if (!Ctor) {
-      setCamera("unsupported");
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      streamRef.current = stream;
-      setCamera("on");
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
-      const detector = new Ctor({ formats: ["qr_code"] });
-      const tick = async () => {
-        if (!streamRef.current) return;
-        const found = await detector.detect(video).catch(() => []);
-        const value = found[0]?.rawValue;
-        if (value) {
-          stream.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-          go(value);
-          return;
-        }
-        requestAnimationFrame(() => void tick());
-      };
-      void tick();
-    } catch {
-      setCamera("denied");
-    }
   };
 
   return (
@@ -114,37 +77,7 @@ function Scan() {
       <Section className="grid gap-8 md:grid-cols-2">
         <div className="card-pop bg-card p-6">
           <h2 className="text-2xl font-extrabold">Scan here</h2>
-          <div className="mt-4 grid aspect-square place-items-center overflow-hidden rounded-2xl border-2 border-ink bg-ink text-ink-foreground">
-            {camera === "on" ? (
-              <video
-                ref={videoRef}
-                className="h-full w-full object-cover"
-                muted
-                playsInline
-              />
-            ) : (
-              <div className="p-6 text-center">
-                <div className="text-5xl">📷</div>
-                <p className="mt-3 text-sm opacity-90">
-                  {camera === "unsupported" &&
-                    "This browser can't scan here. Use your camera app, or type the code."}
-                  {camera === "denied" &&
-                    "Camera access was blocked. Type the code instead."}
-                  {camera === "idle" &&
-                    "We only use the camera to read the code."}
-                </p>
-              </div>
-            )}
-          </div>
-          {camera !== "on" && (
-            <button
-              type="button"
-              className="btn mt-5 w-full bg-coral"
-              onClick={() => void startCamera()}
-            >
-              Turn on camera
-            </button>
-          )}
+          <CameraScanner className="mt-4" onResult={go} />
         </div>
         <form
           className="card-pop bg-sun p-6"

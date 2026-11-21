@@ -46,6 +46,9 @@ export type EventDetail = EventSummary & {
   /** What's still needed before publishing. */
   checklist: { key: string; label: string; done: boolean }[];
   buyerUrl: string;
+  /** Where guests find their seat (print it on screens and signs at the gates). */
+  seatUrl: string;
+  seatChanges: "off" | "review" | "auto";
 };
 
 const iso = (v: unknown) => (v ? new Date(String(v instanceof Date ? v.toISOString() : v)).toISOString() : null);
@@ -128,6 +131,8 @@ export async function getEvent(ctx: Ctx, auth: PartnerAuth, id: string): Promise
     absorbLimitKobo: v.absorb_limit_kobo,
     floorPlanUrl: v.floor_plan_url,
     buyerUrl: `${ctx.env.publicAppUrl}/l/${v.code}`,
+    seatUrl: `${ctx.env.publicAppUrl}/seat?event=${v.code}`,
+    seatChanges: v.seat_changes,
     checklist: [
       { key: "location", label: "Event location set", done: v.lat !== null },
       { key: "plan", label: "Venue plan with delivery spots", done: c.spots > 0 },
@@ -276,6 +281,7 @@ export type UpdateEventInput = {
   floorPlanUrl?: string | undefined;
   deliveryMode?: "own_runners" | "layovr_runners" | undefined;
   status?: "draft" | "live" | "ended" | undefined;
+  seatChanges?: "off" | "review" | "auto" | undefined;
 };
 
 export async function updateEvent(ctx: Ctx, auth: PartnerAuth, id: string, patch: UpdateEventInput): Promise<EventDetail> {
@@ -314,6 +320,7 @@ export async function updateEvent(ctx: Ctx, auth: PartnerAuth, id: string, patch
       if (patch.deliveryMode === "own_runners") set("runner_request_status", "none");
     }
     if (patch.status !== undefined) set("status", patch.status);
+    if (patch.seatChanges !== undefined) set("seat_changes", patch.seatChanges);
     if (sets.length) await q.query(`update venues set ${sets.join(", ")} where id = $1`, vals);
 
     // A new location re-anchors a plan that hasn't been calibrated on site.
